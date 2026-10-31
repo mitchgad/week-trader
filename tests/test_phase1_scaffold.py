@@ -94,7 +94,7 @@ def test_paper_order_blocks_on_halt(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_verify_backtest_requires_costs_and_parity() -> None:
     from week_trader.verify_backtest import VerifyBacktestError, verify_backtest
 
-    with pytest.raises(VerifyBacktestError):
+    with pytest.raises(VerifyBacktestError, match="no backtests"):
         verify_backtest("_template")
 
 

@@ -11,6 +11,7 @@ from week_trader.paper_order import PaperOrderError, paper_order
 from week_trader.prereg import lint_jev_questions, load_preregistration
 from week_trader.gate4 import assert_gate4_closed
 from week_trader.verify_backtest import VerifyBacktestError, verify_backtest
+from week_trader.engines.parity import EngineParityError, materialize_parity_run, run_engine_parity
 from week_trader.util import hypothesis_dir, repo_root
 
 
@@ -87,6 +88,20 @@ def main_verify_backtest(argv: list[str] | None = None) -> None:
     except VerifyBacktestError as exc:
         _exit_fail(str(exc))
     print(result)
+
+
+def main_engine_parity(argv: list[str] | None = None) -> None:
+    args = argv or sys.argv[1:]
+    hypothesis_id = _arg_value(args, "ID")
+    write_run = any(arg in ("--write-run",) for arg in args)
+    try:
+        if write_run:
+            run_dir = materialize_parity_run(hypothesis_id)
+            print(run_dir)
+        else:
+            print(run_engine_parity(hypothesis_id))
+    except EngineParityError as exc:
+        _exit_fail(str(exc))
 
 
 def main_data_validate(argv: list[str] | None = None) -> None:
