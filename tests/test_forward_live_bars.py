@@ -83,6 +83,31 @@ def test_check_forward_anomalies_stale_status(monkeypatch: pytest.MonkeyPatch, t
     assert (forward / "alerts.json").is_file()
 
 
+def test_check_forward_anomalies_signal_flat_with_open_position(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr("week_trader.forward_anomalies.repo_root", lambda: tmp_path)
+    monkeypatch.setattr("week_trader.paper_forward.repo_root", lambda: tmp_path)
+    hypothesis_id = "_template"
+    forward = tmp_path / "paper" / hypothesis_id / "forward"
+    forward.mkdir(parents=True)
+    forward.joinpath("status.json").write_text(
+        json.dumps(
+            {
+                "timestamp_utc": "2099-01-01T00:00:00Z",
+                "account_equity": 1000,
+                "last_signal_side": "flat",
+                "btc_spot_position": {"open": True, "qty": 0.01},
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    report = check_forward_anomalies(hypothesis_id)
+    codes = {a["code"] for a in report["alerts"]}
+    assert "signal_flat_position_open" in codes
+
+
 def test_monitor_with_alerts_includes_severity(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr("week_trader.paper_forward.repo_root", lambda: tmp_path)
     monkeypatch.setattr("week_trader.forward_anomalies.repo_root", lambda: tmp_path)

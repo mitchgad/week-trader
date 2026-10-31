@@ -14,7 +14,7 @@ Project specs live in the Week trader Project store (`docs/week-trader-plan.md`,
 | Paper orders | `paper-order` validates trade gate + HALT; Alpaca **paper-api only** (`ALPACA_PAPER_KEY` / `ALPACA_PAPER_SECRET`) |
 | Strategy validation | **Forward paper only** — `paper-forward` records signals, fills, and P&amp;L from Alpaca paper; backtests are not proof of edge |
 | Paper forward loop | `paper-forward ID=<hypothesis>` monitors account/orders; `ACTION=signal CLOSES=live` fetches Alpaca 4h bars (observation only); `CHECK_ALERTS=1` writes `alerts.json` |
-| Scheduled forward | GitHub Actions `paper-forward-schedule` (cron, paper secrets only) |
+| Scheduled forward | GitHub Actions `paper-forward-schedule` (4h signal + hourly monitor; paper secrets only) |
 
 ### How to run (local)
 
@@ -51,6 +51,8 @@ paper-forward ID=btc-spot-tsmom-4h ACTION=alerts
 ```
 
 Events append to `paper/<id>/forward/events.jsonl`; latest snapshot in `status.json`; anomaly report in `alerts.json`.
+
+`build-jev-state ID=<hypothesis> GATE=<gate>` includes prereg spec fields and, when present, forward monitor snapshots (`data_fresh`, `within_risk_bands`, `last_signal_side`) for human Jev review — it does not call TypeSafe.
 
 ## Quick start
 
