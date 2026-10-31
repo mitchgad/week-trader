@@ -10,9 +10,9 @@ from week_trader.manifest import load_data_manifest
 from week_trader.prereg import compute_freeze_hashes, load_preregistration
 from week_trader.typesafe_client import (
     TypeSafeError,
+    build_system_one_payload,
     call_system_one,
     compare_thresholds,
-    prereg_questions_to_api,
 )
 from week_trader.util import load_json, sha256_json
 
@@ -49,13 +49,7 @@ def run_jev_gate(hypothesis_id: str, gate: str, *, metrics_path: Path | None = N
     freeze = load_json(freeze_path)
     freeze_hash = sha256_json(freeze)
 
-    api_questions = prereg_questions_to_api(questions)
-    request_body = {
-        "model_id": model_id,
-        "gate": gate,
-        "state": {k: v for k, v in state.items() if not str(k).startswith("_")},
-        "questions": api_questions,
-    }
+    request_body = build_system_one_payload(model_id=str(model_id), state=state, questions=questions)
     request_hash = sha256_json(request_body)
 
     try:

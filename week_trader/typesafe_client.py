@@ -5,8 +5,6 @@ from typing import Any
 
 import requests
 
-from week_trader.gate_log import GateLogError
-
 
 TYPESAFE_URL = "https://api.typesafe.ai/v1/systemone"
 REQUEST_TIMEOUT_SECONDS = 30
@@ -46,6 +44,22 @@ def prereg_questions_to_api(questions: list[dict[str, Any]]) -> dict[str, Any]:
     return api
 
 
+def build_system_one_payload(
+    *,
+    model_id: str,
+    state: dict[str, Any],
+    questions: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """JSON body for POST /v1/systemone (questions keyed object, not prereg list)."""
+    if model_id == "jev-latest":
+        raise TypeSafeError("jev-latest is forbidden")
+    return {
+        "model": model_id,
+        "state": _state_for_api(state),
+        "questions": prereg_questions_to_api(questions),
+    }
+
+
 def call_system_one(
     *,
     model_id: str,
@@ -53,19 +67,11 @@ def call_system_one(
     questions: list[dict[str, Any]],
 ) -> dict[str, Any]:
     """Only invoked from jev-gate pipeline."""
-    if model_id == "jev-latest":
-        raise TypeSafeError("jev-latest is forbidden")
-
     api_key = os.environ.get("TYPESAFE_API_KEY")
     if not api_key:
         raise TypeSafeError("TYPESAFE_API_KEY missing — fail closed")
 
-    api_questions = prereg_questions_to_api(questions)
-    payload = {
-        "model": model_id,
-        "state": _state_for_api(state),
-        "questions": api_questions,
-    }
+    payload = build_system_one_payload(model_id=model_id, state=state, questions=questions)
 
     try:
         response = requests.post(
