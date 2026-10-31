@@ -16,6 +16,36 @@ class TypeSafeError(Exception):
     pass
 
 
+def prereg_questions_to_api(questions: list[dict[str, Any]]) -> dict[str, Any]:
+    """Map frozen prereg question list to TypeSafe /v1/systemone questions object."""
+    api: dict[str, Any] = {}
+    for question in questions:
+        qid = question["id"]
+        qtype = question["type"]
+        instructions = question.get("text") or question.get("instructions", "")
+        entry: dict[str, Any] = {"type": qtype, "instructions": instructions}
+        match qtype:
+            case "choice":
+                choices = question.get("choices") or []
+                entry["criteria"] = {name: None for name in choices}
+            case "score":
+                criteria = question.get("criteria")
+                if isinstance(criteria, list) and criteria:
+                    entry["criteria"] = criteria
+                else:
+                    entry["criteria"] = [
+                        "Does not meet the bar in preregistration",
+                        "Partially meets the bar",
+                        "Clearly meets the bar for promotion vs preregistration",
+                    ]
+            case "noul":
+                pass
+            case _:
+                raise TypeSafeError(f"unknown question type {qtype!r} for {qid}")
+        api[qid] = entry
+    return api
+
+
 def call_system_one(
     *,
     model_id: str,
@@ -30,10 +60,11 @@ def call_system_one(
     if not api_key:
         raise TypeSafeError("TYPESAFE_API_KEY missing — fail closed")
 
+    api_questions = prereg_questions_to_api(questions)
     payload = {
         "model": model_id,
         "state": _state_for_api(state),
-        "questions": questions,
+        "questions": api_questions,
     }
 
     try:
@@ -95,7 +126,9 @@ def compare_thresholds(
             ok = prob is not None and prob >= min_score
         elif qtype == "choice":
             min_prob = float(thresholds.get("trade_gate_min_probability", 0.7))
-            prob = _extract_probability(answers, qid)
+            choices = question.get("choices") or []
+            affirmative = choices[0] if choices else None
+            prob = _extract_probability(answers, qid, affirmative_choice=affirmative)
             entry["probability"] = prob
             entry["min_required"] = min_prob
             ok = prob is not None and prob >= min_prob
@@ -117,12 +150,32 @@ def compare_thresholds(
     return passed, details
 
 
-def _extract_probability(answers: Any, qid: str) -> float | None:
-    if isinstance(answers, dict):
-        if qid in answers:
-            val = answers[qid]
-            if isinstance(val, (int, float)):
-                return float(val)
-            if isinstance(val, dict) and "probability" in val:
-                return float(val["probability"])
+def _extract_probability(
+    answers: Any,
+    qid: str,
+    *,
+    affirmative_choice: str | None = None,
+) -> float | None:
+    if not isinstance(answers, dict) or qid not in answers:
+        return None
+    val = answers[qid]
+    if isinstance(val, (int, float)):
+        return float(val)
+    if not isinstance(val, dict):
+        return None
+    if "probability" in val:
+        return float(val["probability"])
+    qtype = val.get("type")
+    if qtype == "noul" and "noul" in val:
+        return float(val["noul"])
+    if qtype == "score" and "score" in val:
+        return float(val["score"])
+    if qtype == "choice":
+        probs = val.get("probabilities")
+        if isinstance(probs, dict):
+            if affirmative_choice and affirmative_choice in probs:
+                return float(probs[affirmative_choice])
+            choice = val.get("choice")
+            if isinstance(choice, str) and choice in probs:
+                return float(probs[choice])
     return None

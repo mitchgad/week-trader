@@ -24,6 +24,31 @@ def test_lint_template_questions() -> None:
     assert errors == []
 
 
+def test_prereg_questions_to_api_dict_shape() -> None:
+    from week_trader.typesafe_client import prereg_questions_to_api
+
+    questions = [
+        {
+            "id": "spec_falsifiable",
+            "type": "noul",
+            "text": "Is the spec falsifiable?",
+            "state_keys": ["fields.a"],
+        },
+        {
+            "id": "operational_ok",
+            "type": "choice",
+            "choices": ["proceed", "block"],
+            "text": "May code submit?",
+            "state_keys": ["fields.b"],
+        },
+    ]
+    api = prereg_questions_to_api(questions)
+    assert isinstance(api, dict)
+    assert set(api) == {"spec_falsifiable", "operational_ok"}
+    assert api["spec_falsifiable"]["type"] == "noul"
+    assert api["operational_ok"]["criteria"] == {"proceed": None, "block": None}
+
+
 def test_jev_gate_fail_closed_without_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
     monkeypatch.setenv("GATE_LOG_HMAC_SECRET", "test-hmac-secret-for-ci-only")

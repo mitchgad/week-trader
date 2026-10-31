@@ -8,7 +8,8 @@ from week_trader.jev_gate import JevGateError, run_jev_gate
 from week_trader.jev_state import write_state_artifact
 from week_trader.manifest import validate_manifest_file
 from week_trader.paper_order import PaperOrderError, paper_order
-from week_trader.prereg import lint_jev_questions, load_preregistration
+from week_trader.prereg import lint_jev_questions as lint_jev_questions_for_prereg
+from week_trader.prereg import load_preregistration
 from week_trader.gate4 import assert_gate4_closed
 from week_trader.verify_backtest import VerifyBacktestError, verify_backtest
 from week_trader.engines.parity import EngineParityError, materialize_parity_run, run_engine_parity
@@ -59,7 +60,7 @@ def main_lint_jev_questions(argv: list[str] | None = None) -> None:
     args = argv or sys.argv[1:]
     hypothesis_id = _arg_value(args, "ID")
     prereg = load_preregistration(hypothesis_id)
-    errors = lint_jev_questions(prereg)
+    errors = lint_jev_questions_for_prereg(prereg)
     if errors:
         for err in errors:
             print(err, file=sys.stderr)
