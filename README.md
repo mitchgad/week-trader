@@ -13,7 +13,8 @@ Project specs live in the Week trader Project store (`docs/week-trader-plan.md`,
 | Jev gates | **Blocked in CI/agents** until `GATE_LOG_HMAC_SECRET` is injected (TypeSafe calls need `TYPESAFE_API_KEY` + HMAC to sign logs). No hand-written `gates/` JSON. |
 | Paper orders | `paper-order` validates trade gate + HALT; Alpaca **paper-api only** (`ALPACA_PAPER_KEY` / `ALPACA_PAPER_SECRET`) |
 | Strategy validation | **Forward paper only** — `paper-forward` records signals, fills, and P&amp;L from Alpaca paper; backtests are not proof of edge |
-| Paper forward loop | `paper-forward ID=<hypothesis>` monitors account/orders; `ACTION=signal CLOSES=<json>` records tsmom observation (no auto-trade) |
+| Paper forward loop | `paper-forward ID=<hypothesis>` monitors account/orders; `ACTION=signal CLOSES=live` fetches Alpaca 4h bars (observation only); `CHECK_ALERTS=1` writes `alerts.json` |
+| Scheduled forward | GitHub Actions `paper-forward-schedule` (cron, paper secrets only) |
 
 ### How to run (local)
 
@@ -42,11 +43,14 @@ Forward paper monitoring (requires Alpaca paper secrets):
 
 ```bash
 paper-forward ID=btc-spot-tsmom-4h
+paper-forward ID=btc-spot-tsmom-4h CHECK_ALERTS=1
 paper-forward ID=btc-spot-tsmom-4h --dry-run
+paper-forward ID=btc-spot-tsmom-4h ACTION=signal CLOSES=live
 paper-forward ID=btc-spot-tsmom-4h ACTION=signal CLOSES=path/to/closes.json
+paper-forward ID=btc-spot-tsmom-4h ACTION=alerts
 ```
 
-Events append to `paper/<id>/forward/events.jsonl`; latest snapshot in `status.json`.
+Events append to `paper/<id>/forward/events.jsonl`; latest snapshot in `status.json`; anomaly report in `alerts.json`.
 
 ## Quick start
 

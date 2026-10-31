@@ -8,10 +8,13 @@ from typing import Any, Callable
 
 from week_trader.brokers.alpaca_paper import (
     AlpacaPaperError,
+    fetch_crypto_4h_bar_closes,
     fetch_paper_account,
     fetch_paper_order,
     fetch_paper_positions,
 )
+from week_trader.manifest import load_data_manifest, resolve_manifest_for_hypothesis
+from week_trader.prereg import load_preregistration
 from week_trader.util import load_json, repo_root
 
 
@@ -60,6 +63,43 @@ def record_signal(hypothesis_id: str, signal: dict[str, Any]) -> dict[str, Any]:
     """Record a strategy signal for forward validation (does not submit orders)."""
     append_forward_event(hypothesis_id, "signal", signal)
     return {"recorded": True, "signal": signal}
+
+
+def manifest_crypto_symbol(hypothesis_id: str) -> str:
+    prereg = load_preregistration(hypothesis_id)
+    manifest_path = resolve_manifest_for_hypothesis(hypothesis_id, prereg)
+    manifest = load_data_manifest(manifest_path)
+    universe = manifest.get("universe")
+    if not isinstance(universe, dict):
+        raise PaperForwardError("manifest universe missing")
+    symbols = universe.get("symbols")
+    if not isinstance(symbols, list) or not symbols:
+        raise PaperForwardError("manifest universe.symbols missing")
+    symbol = symbols[0]
+    if not isinstance(symbol, str) or not symbol.strip():
+        raise PaperForwardError("manifest symbol invalid")
+    bars = manifest.get("bars")
+    if isinstance(bars, dict) and bars.get("interval") != "4h":
+        raise PaperForwardError("live 4h fetch requires manifest bars.interval 4h")
+    return symbol.strip()
+
+
+def fetch_live_4h_closes(hypothesis_id: str, *, min_bars: int = 8) -> list[float]:
+    symbol = manifest_crypto_symbol(hypothesis_id)
+    try:
+        return fetch_crypto_4h_bar_closes(symbol, min_bars=min_bars)
+    except AlpacaPaperError as exc:
+        raise PaperForwardError(str(exc)) from exc
+
+
+def record_signal_from_live_bars(hypothesis_id: str) -> dict[str, Any]:
+    symbol = manifest_crypto_symbol(hypothesis_id)
+    closes = fetch_live_4h_closes(hypothesis_id)
+    signal = evaluate_tsmom_4h_signal(closes)
+    signal["closes_source"] = "alpaca_live_4h"
+    signal["symbol"] = symbol
+    signal["bar_count"] = len(closes)
+    return record_signal(hypothesis_id, signal)
 
 
 def evaluate_tsmom_4h_signal(closes: list[float]) -> dict[str, Any]:
@@ -136,6 +176,27 @@ def run_forward_monitor_tick(
     }
     _write_status(hypothesis_id, status)
     return status
+
+
+def run_forward_monitor_with_alerts(
+    hypothesis_id: str,
+    *,
+    dry_run: bool = False,
+    fetch_account: FetchAccount | None = None,
+    fetch_positions: FetchPositions | None = None,
+    fetch_order: FetchOrder | None = None,
+) -> dict[str, Any]:
+    from week_trader.forward_anomalies import check_forward_anomalies
+
+    status = run_forward_monitor_tick(
+        hypothesis_id,
+        dry_run=dry_run,
+        fetch_account=fetch_account,
+        fetch_positions=fetch_positions,
+        fetch_order=fetch_order,
+    )
+    alerts = check_forward_anomalies(hypothesis_id)
+    return {**status, "anomaly_severity": alerts.get("severity"), "anomaly_count": alerts.get("alert_count")}
 
 
 def _sync_pending_orders(hypothesis_id: str, get_order: FetchOrder) -> list[dict[str, Any]]:
