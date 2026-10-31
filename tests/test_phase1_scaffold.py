@@ -24,6 +24,77 @@ def test_lint_template_questions() -> None:
     assert errors == []
 
 
+def test_build_system_one_payload_matches_typesafe_schema() -> None:
+    from week_trader.typesafe_client import build_system_one_payload
+
+    questions = [
+        {
+            "id": "spec_falsifiable",
+            "type": "noul",
+            "text": "Is the spec falsifiable?",
+            "state_keys": ["fields.a"],
+        },
+    ]
+    payload = build_system_one_payload(
+        model_id="jev-1.14.0",
+        state={"fields": {"a": True}},
+        questions=questions,
+    )
+    assert set(payload) == {"model", "state", "questions"}
+    assert payload["model"] == "jev-1.14.0"
+    assert isinstance(payload["questions"], dict)
+    assert not isinstance(payload["questions"], list)
+    assert "spec_falsifiable" in payload["questions"]
+
+
+def test_call_system_one_posts_object_questions(monkeypatch: pytest.MonkeyPatch) -> None:
+    from week_trader import typesafe_client
+
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        status_code = 200
+
+        @staticmethod
+        def json() -> dict[str, object]:
+            return {"answers": {"spec_falsifiable": {"type": "noul", "noul": 0.9}}}
+
+    def fake_post(url: str, **kwargs: object) -> FakeResponse:
+        captured["url"] = url
+        captured["json"] = kwargs.get("json")
+        return FakeResponse()
+
+    monkeypatch.setenv("TYPESAFE_API_KEY", "test-key-not-real")
+    monkeypatch.setattr(typesafe_client.requests, "post", fake_post)
+
+    questions = [
+        {
+            "id": "spec_falsifiable",
+            "type": "noul",
+            "text": "Is the spec falsifiable?",
+            "state_keys": ["fields.a"],
+        },
+    ]
+    typesafe_client.call_system_one(
+        model_id="jev-1.14.0",
+        state={"fields": {"a": True}},
+        questions=questions,
+    )
+
+    body = captured["json"]
+    assert isinstance(body, dict)
+    assert isinstance(body["questions"], dict)
+    assert body["questions"]["spec_falsifiable"]["type"] == "noul"
+
+
+def test_call_system_one_fail_closed_without_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    from week_trader.typesafe_client import TypeSafeError, call_system_one
+
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    with pytest.raises(TypeSafeError, match="TYPESAFE_API_KEY"):
+        call_system_one(model_id="jev-1.14.0", state={}, questions=[])
+
+
 def test_prereg_questions_to_api_dict_shape() -> None:
     from week_trader.typesafe_client import prereg_questions_to_api
 
