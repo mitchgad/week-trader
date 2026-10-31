@@ -18,6 +18,7 @@ backtests/*/
 !backtests/.gitkeep
 !backtests/btc-spot-tsmom-4h/
 paper/*/journal/
+paper/*/forward/
 !paper/.gitkeep
 internal/reviews/
 

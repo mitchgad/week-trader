@@ -12,7 +12,8 @@ Project specs live in the Week trader Project store (`docs/week-trader-plan.md`,
 | Hypothesis `btc-spot-tsmom-4h` | Frozen spec + manifest; **engine parity run** under `backtests/btc-spot-tsmom-4h/run-0001/` |
 | Jev gates | **Blocked in CI/agents** until `GATE_LOG_HMAC_SECRET` is injected (TypeSafe calls need `TYPESAFE_API_KEY` + HMAC to sign logs). No hand-written `gates/` JSON. |
 | Paper orders | `paper-order` validates trade gate + HALT; Alpaca **paper-api only** (`ALPACA_PAPER_KEY` / `ALPACA_PAPER_SECRET`) |
-| Full 4h TSMOM strategy backtest | **Not implemented** — current run is golden-slice **infrastructure parity** (primary vs Jesse hold), per [docs/backtest-engines.md](docs/backtest-engines.md) |
+| Strategy validation | **Forward paper only** — `paper-forward` records signals, fills, and P&amp;L from Alpaca paper; backtests are not proof of edge |
+| Paper forward loop | `paper-forward ID=<hypothesis>` monitors account/orders; `ACTION=signal CLOSES=<json>` records tsmom observation (no auto-trade) |
 
 ### How to run (local)
 
@@ -36,6 +37,16 @@ make jev-gate ID=btc-spot-tsmom-4h GATE=backtest METRICS=backtests/btc-spot-tsmo
 ```
 
 Commit signed logs only from `jev-gate` under `gates/btc-spot-tsmom-4h/` (gitignore exception added).
+
+Forward paper monitoring (requires Alpaca paper secrets):
+
+```bash
+paper-forward ID=btc-spot-tsmom-4h
+paper-forward ID=btc-spot-tsmom-4h --dry-run
+paper-forward ID=btc-spot-tsmom-4h ACTION=signal CLOSES=path/to/closes.json
+```
+
+Events append to `paper/<id>/forward/events.jsonl`; latest snapshot in `status.json`.
 
 ## Quick start
 

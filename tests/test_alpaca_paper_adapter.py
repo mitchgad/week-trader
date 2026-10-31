@@ -91,6 +91,7 @@ def test_paper_order_submits_via_paper_api(monkeypatch: pytest.MonkeyPatch) -> N
 
     class FakeResponse:
         status_code = 200
+        content = b'{"id":"ord-123","status":"accepted","symbol":"BTCUSD"}'
 
         @staticmethod
         def json() -> dict[str, str]:
@@ -102,9 +103,9 @@ def test_paper_order_submits_via_paper_api(monkeypatch: pytest.MonkeyPatch) -> N
         captured["json"] = kwargs.get("json")
         return FakeResponse()
 
-    from week_trader import brokers
+    import week_trader.brokers.alpaca_paper as alpaca_paper_module
 
-    monkeypatch.setattr(brokers.alpaca_paper.requests, "post", fake_post)
+    monkeypatch.setattr(alpaca_paper_module.requests, "post", fake_post)
 
     from week_trader.paper_order import paper_order
 

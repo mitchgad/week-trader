@@ -14,7 +14,83 @@ class AlpacaPaperError(Exception):
     pass
 
 
+HttpGet = Callable[..., requests.Response]
 HttpPost = Callable[..., requests.Response]
+
+
+def _auth_headers() -> dict[str, str]:
+    key, secret = load_alpaca_paper_credentials()
+    return {
+        "APCA-API-KEY-ID": key,
+        "APCA-API-SECRET-KEY": secret,
+        "Content-Type": "application/json",
+    }
+
+
+def alpaca_paper_request(
+    method: str,
+    path: str,
+    *,
+    params: dict[str, str] | None = None,
+    json_body: dict[str, Any] | None = None,
+    http_get: HttpGet | None = None,
+    http_post: HttpPost | None = None,
+    timeout: int = 30,
+) -> Any:
+    """Authenticated request to Alpaca paper API only."""
+    base = paper_base_url()
+    url = f"{base}{path}" if path.startswith("/") else f"{base}/{path}"
+    headers = _auth_headers()
+    try:
+        if method.upper() == "GET":
+            get = http_get or requests.get
+            response = get(url, headers=headers, params=params, timeout=timeout)
+        elif method.upper() == "POST":
+            post = http_post or requests.post
+            response = post(url, headers=headers, json=json_body, params=params, timeout=timeout)
+        else:
+            raise AlpacaPaperError(f"unsupported HTTP method {method!r}")
+    except requests.Timeout as exc:
+        raise AlpacaPaperError("Alpaca paper timeout — fail closed") from exc
+    except requests.RequestException as exc:
+        raise AlpacaPaperError(f"Alpaca paper request error — fail closed: {exc}") from exc
+
+    if response.status_code >= 400:
+        raise AlpacaPaperError(f"Alpaca paper HTTP {response.status_code} — fail closed")
+
+    body_bytes = getattr(response, "content", None)
+    if not body_bytes:
+        return {}
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise AlpacaPaperError("Alpaca paper malformed JSON — fail closed") from exc
+    return payload
+
+
+def fetch_paper_account(**kwargs: Any) -> dict[str, Any]:
+    payload = alpaca_paper_request("GET", "/v2/account", **kwargs)
+    if not isinstance(payload, dict):
+        raise AlpacaPaperError("Alpaca account response must be object — fail closed")
+    return payload
+
+
+def fetch_paper_positions(**kwargs: Any) -> list[dict[str, Any]]:
+    payload = alpaca_paper_request("GET", "/v2/positions", **kwargs)
+    if isinstance(payload, list):
+        return [p for p in payload if isinstance(p, dict)]
+    if isinstance(payload, dict):
+        positions = payload.get("positions")
+        if isinstance(positions, list):
+            return [p for p in positions if isinstance(p, dict)]
+    return []
+
+
+def fetch_paper_order(order_id: str, **kwargs: Any) -> dict[str, Any]:
+    payload = alpaca_paper_request("GET", f"/v2/orders/{order_id}", **kwargs)
+    if not isinstance(payload, dict):
+        raise AlpacaPaperError("Alpaca order response must be object — fail closed")
+    return payload
 
 
 def require_paper_alpaca_host(url: str) -> str:
@@ -66,34 +142,5 @@ def submit_alpaca_paper_order(
     http_post: HttpPost | None = None,
 ) -> dict[str, Any]:
     """POST a paper order to Alpaca. Only paper-api host; credentials required."""
-    key, secret = load_alpaca_paper_credentials()
-    base = paper_base_url()
     body = build_alpaca_order_body(intent)
-    post = http_post or requests.post
-    try:
-        response = post(
-            f"{base}/v2/orders",
-            headers={
-                "APCA-API-KEY-ID": key,
-                "APCA-API-SECRET-KEY": secret,
-                "Content-Type": "application/json",
-            },
-            json=body,
-            timeout=30,
-        )
-    except requests.Timeout as exc:
-        raise AlpacaPaperError("Alpaca paper timeout — fail closed") from exc
-    except requests.RequestException as exc:
-        raise AlpacaPaperError(f"Alpaca paper request error — fail closed: {exc}") from exc
-
-    if response.status_code >= 400:
-        raise AlpacaPaperError(f"Alpaca paper HTTP {response.status_code} — fail closed")
-
-    try:
-        payload = response.json()
-    except ValueError as exc:
-        raise AlpacaPaperError("Alpaca paper malformed JSON — fail closed") from exc
-
-    if not isinstance(payload, dict):
-        raise AlpacaPaperError("Alpaca paper response must be object — fail closed")
-    return payload
+    return alpaca_paper_request("POST", "/v2/orders", json_body=body, http_post=http_post)

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from week_trader.brokers.alpaca_paper import AlpacaPaperError, submit_alpaca_paper_order
+from week_trader.paper_forward import append_forward_event, register_pending_order
 from week_trader.gate_log import verify_gate_log_file
 from week_trader.prereg import load_preregistration
 from week_trader.util import load_json, repo_root, sha256_json
@@ -81,6 +82,24 @@ def paper_order(order_intent_id: str, gate_log_path: Path, *, dry_run: bool = Fa
             "status": broker_resp.get("status"),
             "symbol": broker_resp.get("symbol"),
         }
+        order_id = broker_resp.get("id")
+        if isinstance(order_id, str):
+            register_pending_order(
+                hypothesis_id,
+                order_id,
+                {"order_intent_id": order_intent_id, "gate_log": str(gate_log_path.relative_to(root))},
+            )
+            append_forward_event(
+                hypothesis_id,
+                "order_submitted",
+                {
+                    "order_intent_id": order_intent_id,
+                    "alpaca_order_id": order_id,
+                    "symbol": broker_resp.get("symbol"),
+                    "side": intent.get("side"),
+                    "qty": intent.get("qty"),
+                },
+            )
 
     journal_dir = root / "paper" / hypothesis_id / "journal"
     journal_dir.mkdir(parents=True, exist_ok=True)
