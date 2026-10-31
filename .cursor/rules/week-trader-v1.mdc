@@ -1,0 +1,14 @@
+---
+description: v1 — no live trading, no secrets in chat, agents never pass gates or orders
+alwaysApply: true
+---
+
+# Week trader v1 guardrails
+
+- **No live trading** in v1. Do not add live broker connectors, `LIVE_*` secrets, or open Gate 4.
+- **No secrets in chat**, git, PR bodies, or agent markdown. Use Cursor Runtime Secrets only.
+- **Agents must not** declare PASS/FAIL for gates, approve paper, send orders, or clear HALT in prose.
+- **`gates/`** JSON is valid only from `scripts/jev-gate`. Do not hand-write gate logs.
+- **Jev** is TypeSafe System One — not jesse-ai. Pin `model_id`; never use `jev-latest`.
+- **Only `scripts/jev-gate`** may call TypeSafe API (enforced in CI grep).
+- **State** for Jev is built only by `scripts/build-jev-state`, not by LLM narrative.

@@ -1,0 +1,33 @@
+# Gate 4 — live trading prerequisites (v1 structurally blocked)
+
+schema_version: 1
+v1_policy: live_impossible
+
+items:
+  - id: live_broker_keys_human_custody
+    description: Live API keys held by human outside cloud agents; WT-LiveGatekeeper runbook signed
+    status: blocked_v1
+
+  - id: paper_live_parity_proof
+    description: Documented paper-to-live fill and funding parity on target venue class
+    status: blocked_v1
+
+  - id: jurisdiction_and_eligibility
+    description: Legal review for target venues and instruments
+    status: blocked_v1
+
+  - id: kill_switch_live_drill
+    description: Live kill switch tested on broker UI and API within 60s SLA
+    status: blocked_v1
+
+  - id: gate3_paper_promotion_complete
+    description: Gate 3 paper promotion with signed Jev logs for target hypothesis
+    status: blocked_v1
+
+  - id: no_live_secrets_in_ci
+    description: CI and cloud env contain no live broker hosts or LIVE_* secrets
+    status: blocked_v1
+
+  - id: wt_live_gatekeeper_role
+    description: WT-LiveGatekeeper role staffed; no autonomous live orders
+    status: blocked_v1

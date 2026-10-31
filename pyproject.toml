@@ -1,0 +1,38 @@
+[project]
+name = "week-trader"
+version = "0.1.0"
+description = "Week trader Phase 1 scaffold — Jev gates, paper path (no live v1)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "ccxt>=4.0",
+  "pandas>=2.0",
+  "quantstats>=0.0.62",
+  "pyyaml>=6.0",
+  "requests>=2.31",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+yfinance = ["yfinance>=0.2"]
+
+[project.scripts]
+jev-gate = "week_trader.cli.jev_gate:main"
+build-jev-state = "week_trader.cli.build_jev_state:main"
+verify-gate-log = "week_trader.cli.verify_gate_log:main"
+lint-jev-questions = "week_trader.cli.lint_jev_questions:main"
+paper-order = "week_trader.cli.paper_order:main"
+verify-backtest = "week_trader.cli.verify_backtest:main"
+data-validate = "week_trader.cli.data_validate:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["week_trader*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
