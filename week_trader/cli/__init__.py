@@ -9,11 +9,14 @@ from week_trader.jev_gate import JevGateError, run_jev_gate
 from week_trader.jev_state import write_state_artifact
 from week_trader.manifest import validate_manifest_file
 from week_trader.paper_order import PaperOrderError, paper_order
+from week_trader.forward_anomalies import check_forward_anomalies
 from week_trader.paper_forward import (
     PaperForwardError,
     evaluate_tsmom_4h_signal,
     record_signal,
+    record_signal_from_live_bars,
     run_forward_monitor_tick,
+    run_forward_monitor_with_alerts,
 )
 from week_trader.prereg import lint_jev_questions as lint_jev_questions_for_prereg
 from week_trader.prereg import load_preregistration
@@ -84,17 +87,35 @@ def main_paper_forward(argv: list[str] | None = None) -> None:
     for arg in args:
         if arg.startswith("ACTION="):
             action = arg.split("=", 1)[1]
+    check_alerts = any(arg in ("--check-alerts", "CHECK_ALERTS=1") for arg in args)
     try:
         if action == "signal":
-            closes_path = _optional_path(args, "CLOSES")
-            if closes_path is None or not closes_path.is_file():
-                _exit_fail("ACTION=signal requires CLOSES=<path-to-json-array>")
-            closes_raw = json.loads(closes_path.read_text(encoding="utf-8"))
-            if not isinstance(closes_raw, list):
-                _exit_fail("CLOSES file must be a JSON array of floats")
-            closes = [float(x) for x in closes_raw]
-            signal = evaluate_tsmom_4h_signal(closes)
-            print(record_signal(hypothesis_id, signal))
+            closes_spec = _arg_value_optional(args, "CLOSES")
+            if closes_spec is None:
+                _exit_fail("ACTION=signal requires CLOSES=<path-to-json-array> or CLOSES=live")
+            if closes_spec.strip().lower() == "live":
+                print(record_signal_from_live_bars(hypothesis_id))
+            else:
+                closes_path = Path(closes_spec)
+                if not closes_path.is_absolute():
+                    closes_path = repo_root() / closes_path
+                if not closes_path.is_file():
+                    _exit_fail("CLOSES file not found")
+                closes_raw = json.loads(closes_path.read_text(encoding="utf-8"))
+                if not isinstance(closes_raw, list):
+                    _exit_fail("CLOSES file must be a JSON array of floats")
+                closes = [float(x) for x in closes_raw]
+                signal = evaluate_tsmom_4h_signal(closes)
+                print(record_signal(hypothesis_id, signal))
+        elif action == "alerts":
+            print(check_forward_anomalies(hypothesis_id))
+        elif check_alerts:
+            print(
+                run_forward_monitor_with_alerts(
+                    hypothesis_id,
+                    dry_run=dry_run,
+                )
+            )
         else:
             print(run_forward_monitor_tick(hypothesis_id, dry_run=dry_run))
     except PaperForwardError as exc:
@@ -179,4 +200,12 @@ def _optional_path(args: list[str], key: str) -> Path | None:
             if not path.is_absolute():
                 path = repo_root() / path
             return path
+    return None
+
+
+def _arg_value_optional(args: list[str], key: str) -> str | None:
+    prefix = f"{key}="
+    for arg in args:
+        if arg.startswith(prefix):
+            return arg.split("=", 1)[1]
     return None

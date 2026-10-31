@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 from urllib.parse import urlparse
 
 import requests
 
 PAPER_ALPACA_NETLOC = "paper-api.alpaca.markets"
+DATA_ALPACA_NETLOC = "data.alpaca.markets"
 DEFAULT_PAPER_BASE_URL = f"https://{PAPER_ALPACA_NETLOC}"
+DEFAULT_DATA_BASE_URL = f"https://{DATA_ALPACA_NETLOC}"
+CRYPTO_4H_TIMEFRAME = "4Hour"
 
 
 class AlpacaPaperError(Exception):
@@ -36,9 +40,10 @@ def alpaca_paper_request(
     http_get: HttpGet | None = None,
     http_post: HttpPost | None = None,
     timeout: int = 30,
+    base_url: str | None = None,
 ) -> Any:
     """Authenticated request to Alpaca paper API only."""
-    base = paper_base_url()
+    base = base_url or paper_base_url()
     url = f"{base}{path}" if path.startswith("/") else f"{base}/{path}"
     headers = _auth_headers()
     try:
@@ -118,6 +123,79 @@ def load_alpaca_paper_credentials() -> tuple[str, str]:
 def paper_base_url() -> str:
     raw = os.environ.get("ALPACA_PAPER_BASE_URL", DEFAULT_PAPER_BASE_URL)
     return require_paper_alpaca_host(raw)
+
+
+def require_alpaca_data_host(url: str) -> str:
+    """Read-only market data host (v1: no order endpoints on this host)."""
+    raw = url.strip()
+    if not raw:
+        raise AlpacaPaperError("ALPACA_DATA_BASE_URL empty — fail closed")
+    parsed = urlparse(raw if "://" in raw else f"https://{raw}")
+    netloc = parsed.netloc.lower()
+    if not netloc:
+        raise AlpacaPaperError("invalid ALPACA_DATA_BASE_URL — fail closed")
+    if netloc != DATA_ALPACA_NETLOC:
+        raise AlpacaPaperError(f"refusing non-data Alpaca host {netloc!r} — v1 data only")
+    return DEFAULT_DATA_BASE_URL
+
+
+def data_base_url() -> str:
+    raw = os.environ.get("ALPACA_DATA_BASE_URL", DEFAULT_DATA_BASE_URL)
+    return require_alpaca_data_host(raw)
+
+
+def fetch_crypto_4h_bar_closes(
+    symbol: str,
+    *,
+    min_bars: int = 8,
+    lookback_days: int = 14,
+    http_get: HttpGet | None = None,
+) -> list[float]:
+    """
+    Completed 4h crypto bar closes from Alpaca market data (observation only).
+    Uses the same paper credentials as the trading API.
+    """
+    if min_bars < 2:
+        raise AlpacaPaperError("min_bars must be at least 2")
+    start = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    params = {
+        "symbols": symbol,
+        "timeframe": CRYPTO_4H_TIMEFRAME,
+        "start": start,
+        "limit": "10000",
+        "sort": "asc",
+    }
+    payload = alpaca_paper_request(
+        "GET",
+        "/v1beta3/crypto/us/bars",
+        params=params,
+        http_get=http_get,
+        base_url=data_base_url(),
+    )
+    if not isinstance(payload, dict):
+        raise AlpacaPaperError("Alpaca bars response must be object — fail closed")
+    bars_root = payload.get("bars")
+    if not isinstance(bars_root, dict):
+        raise AlpacaPaperError("Alpaca bars missing bars object — fail closed")
+    series = bars_root.get(symbol)
+    if not isinstance(series, list):
+        raise AlpacaPaperError(f"Alpaca bars missing series for {symbol!r} — fail closed")
+    closes: list[float] = []
+    for bar in series:
+        if not isinstance(bar, dict):
+            continue
+        close = bar.get("c")
+        if close is None:
+            continue
+        try:
+            closes.append(float(close))
+        except (TypeError, ValueError) as exc:
+            raise AlpacaPaperError("Alpaca bar close not numeric — fail closed") from exc
+    if len(closes) < min_bars:
+        raise AlpacaPaperError(
+            f"need at least {min_bars} 4h closes for signal; got {len(closes)} — fail closed"
+        )
+    return closes
 
 
 def build_alpaca_order_body(intent: dict[str, Any]) -> dict[str, str]:
