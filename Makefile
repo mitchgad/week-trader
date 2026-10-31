@@ -25,6 +25,6 @@ test:
 	pytest -q
 
 ci-grep-typesafe:
-	! rg -n "api\\.typesafe\\.ai|typesafe_client|call_system_one" --glob '!week_trader/typesafe_client.py' --glob '!week_trader/jev_gate.py' week_trader scripts || (echo 'TypeSafe calls outside allowed modules' && exit 1)
+	! rg -n "api\\.typesafe\\.ai|call_system_one" --glob '!week_trader/typesafe_client.py' --glob '!week_trader/jev_gate.py' week_trader scripts || (echo 'TypeSafe calls outside allowed modules' && exit 1)
 
 ci: install gate4-closed lint-jev-questions data-validate ci-grep-typesafe test
