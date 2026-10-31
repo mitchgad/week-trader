@@ -23,7 +23,9 @@ def _parity_hold_strategy_class():
             return False
 
         def go_long(self) -> None:
-            self.buy = 1, self.price
+            # Spend ~99% of quote balance (golden-slice prices exceed 10k for qty=1).
+            qty = (self.balance * 0.99) / self.price
+            self.buy = qty, self.price
 
     return ParityHoldInfrastructure
 
@@ -68,7 +70,6 @@ def run_from_payload(payload: dict) -> dict[str, object]:
     return {
         "engine": "jesse_research_backtest",
         "net_return": net_pct,
-        "jesse_metrics": metrics,
     }
 
 
