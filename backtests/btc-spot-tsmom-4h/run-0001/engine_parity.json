@@ -1,0 +1,19 @@
+{
+  "status": "pass",
+  "method": "golden_slice_primary_vs_jesse_research",
+  "metric": "net_return",
+  "primary_engine": {
+    "engine": "primary_golden_slice",
+    "entry_price": 42010.0,
+    "exit_price": 42165.0,
+    "gross_return": 0.0036895977148299064,
+    "net_return": 0.0006895977148299063,
+    "bars": 10.0
+  },
+  "secondary_engine": {
+    "engine": "jesse_research_backtest",
+    "net_return": -0.0007377935583551224
+  },
+  "max_abs_delta": 0.0014273912731850287,
+  "max_metric_delta_limit": 0.01
+}

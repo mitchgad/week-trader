@@ -13,10 +13,12 @@ build/
 gates/*/
 !gates/.gitkeep
 !gates/gate4-checklist.yaml
-paper/*/journal/
-!paper/.gitkeep
+!gates/btc-spot-tsmom-4h/
 backtests/*/
 !backtests/.gitkeep
+!backtests/btc-spot-tsmom-4h/
+paper/*/journal/
+!paper/.gitkeep
 internal/reviews/
 
 dot-cursor/

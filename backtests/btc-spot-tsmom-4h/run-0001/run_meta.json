@@ -1,0 +1,9 @@
+{
+  "hypothesis_id": "btc-spot-tsmom-4h",
+  "run_id": "run-0001",
+  "created_utc": "2026-10-31T11:15:00Z",
+  "kind": "engine_parity_golden_slice",
+  "note": "Phase 1 infrastructure parity (primary golden-slice vs Jesse research hold). Not the full 4h TSMOM strategy backtest yet.",
+  "jesse_python": "Python 3.10 venv with jesse==1.4.2 (set JESSE_PYTHON for make engine-parity)",
+  "manifest_id": "btc-spot-tsmom-4h-alpaca"
+}

@@ -11,7 +11,8 @@ from week_trader.paper_order import PaperOrderError, paper_order
 from week_trader.prereg import lint_jev_questions as lint_jev_questions_for_prereg
 from week_trader.prereg import load_preregistration
 from week_trader.gate4 import assert_gate4_closed
-from week_trader.verify_backtest import VerifyBacktestError, verify_backtest
+from week_trader.verify_backtest import VerifyBacktestError
+from week_trader.verify_backtest import verify_backtest as run_verify_backtest
 from week_trader.engines.parity import EngineParityError, materialize_parity_run, run_engine_parity
 from week_trader.util import hypothesis_dir, repo_root
 
@@ -85,7 +86,7 @@ def main_verify_backtest(argv: list[str] | None = None) -> None:
     args = argv or sys.argv[1:]
     hypothesis_id = _arg_value(args, "ID")
     try:
-        result = verify_backtest(hypothesis_id)
+        result = run_verify_backtest(hypothesis_id)
     except VerifyBacktestError as exc:
         _exit_fail(str(exc))
     print(result)

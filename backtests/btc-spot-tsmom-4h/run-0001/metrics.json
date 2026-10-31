@@ -1,0 +1,15 @@
+{
+  "hypothesis_id": "btc-spot-tsmom-4h",
+  "net_return": 0.0006895977148299063,
+  "gross_return": 0.0036895977148299064,
+  "engine": "primary_golden_slice",
+  "parity_method": "golden_slice_primary_vs_jesse_research",
+  "jesse_net_return": -0.0007377935583551224,
+  "engine_parity_max_abs_delta": 0.0014273912731850287,
+  "trial_count_n": 0,
+  "oos_sharpe_haircut": 0.0006895977148299063,
+  "implementation_audit_pass": true,
+  "unit_tests_pass": true,
+  "manifest_cost_block_present": true,
+  "engine_parity_required": true
+}
