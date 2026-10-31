@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from week_trader.paper_forward import append_forward_event, forward_dir
+from week_trader.paper_forward import append_forward_event, forward_dir, read_last_signal_side
 from week_trader.util import load_json, repo_root
 
 STALE_STATUS_HOURS = 5.0
@@ -76,6 +76,27 @@ def check_forward_anomalies(hypothesis_id: str) -> dict[str, Any]:
                     "severity": "critical",
                     "message": "account_equity non-positive in status snapshot",
                     "equity": equity,
+                }
+            )
+        last_side = status.get("last_signal_side")
+        if not isinstance(last_side, str):
+            last_side = read_last_signal_side(events_path)
+        btc = status.get("btc_spot_position")
+        btc_open = isinstance(btc, dict) and bool(btc.get("open"))
+        if last_side == "flat" and btc_open:
+            alerts.append(
+                {
+                    "code": "signal_flat_position_open",
+                    "severity": "warn",
+                    "message": "last signal flat but BTC spot position still open",
+                }
+            )
+        elif last_side == "long" and isinstance(btc, dict) and not btc_open:
+            alerts.append(
+                {
+                    "code": "signal_long_no_position",
+                    "severity": "warn",
+                    "message": "last signal long but no open BTC spot position (trade gate may block orders)",
                 }
             )
 

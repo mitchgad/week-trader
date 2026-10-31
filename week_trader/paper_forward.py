@@ -22,6 +22,9 @@ class PaperForwardError(Exception):
     pass
 
 
+FORWARD_STALE_STATUS_HOURS = 5.0
+
+
 FetchAccount = Callable[..., dict[str, Any]]
 FetchPositions = Callable[..., list[dict[str, Any]]]
 FetchOrder = Callable[..., dict[str, Any]]
@@ -161,6 +164,12 @@ def run_forward_monitor_tick(
 
     fills_synced = _sync_pending_orders(hypothesis_id, get_order)
     pnl = _pnl_snapshot(account, positions)
+    btc_spot_position: dict[str, Any] | None = None
+    try:
+        manifest_symbol = manifest_crypto_symbol(hypothesis_id)
+        btc_spot_position = summarize_spot_position(positions, manifest_symbol)
+    except PaperForwardError:
+        btc_spot_position = None
     append_forward_event(hypothesis_id, "pnl_snapshot", pnl)
     for fill in fills_synced:
         append_forward_event(hypothesis_id, "fill", fill)
@@ -169,11 +178,17 @@ def run_forward_monitor_tick(
         "hypothesis_id": hypothesis_id,
         "timestamp_utc": _utc_now(),
         "account_equity": pnl.get("equity"),
+        "last_equity": pnl.get("last_equity"),
         "unrealized_pl": pnl.get("unrealized_pl"),
         "open_positions": len(positions),
         "fills_synced_this_tick": len(fills_synced),
         "validation_mode": "forward_paper_only",
     }
+    if btc_spot_position is not None:
+        status["btc_spot_position"] = btc_spot_position
+    last_signal_side = read_last_signal_side(forward_dir(hypothesis_id) / "events.jsonl")
+    if last_signal_side is not None:
+        status["last_signal_side"] = last_signal_side
     _write_status(hypothesis_id, status)
     return status
 
@@ -270,3 +285,53 @@ def _float_or_none(value: Any) -> float | None:
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def normalize_alpaca_crypto_symbol(symbol: str) -> str:
+    return symbol.replace("/", "").upper()
+
+
+def summarize_spot_position(positions: list[dict[str, Any]], manifest_symbol: str) -> dict[str, Any]:
+    target = normalize_alpaca_crypto_symbol(manifest_symbol)
+    for position in positions:
+        raw_symbol = position.get("symbol")
+        if not raw_symbol:
+            continue
+        if normalize_alpaca_crypto_symbol(str(raw_symbol)) != target:
+            continue
+        qty = _float_or_none(position.get("qty")) or 0.0
+        market_value = _float_or_none(position.get("market_value"))
+        return {
+            "symbol": str(raw_symbol),
+            "qty": qty,
+            "market_value": market_value,
+            "open": qty > 0,
+        }
+    return {
+        "symbol": manifest_symbol,
+        "qty": 0.0,
+        "market_value": 0.0,
+        "open": False,
+    }
+
+
+def read_last_signal_side(events_path: Path) -> str | None:
+    if not events_path.is_file():
+        return None
+    last_side: str | None = None
+    for line in events_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("event_type") != "signal":
+            continue
+        payload = event.get("payload")
+        if not isinstance(payload, dict):
+            continue
+        side = payload.get("side")
+        if side in {"long", "flat"}:
+            last_side = str(side)
+    return last_side

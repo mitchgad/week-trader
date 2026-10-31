@@ -1,0 +1,8 @@
+{
+  "symbol": "BTCUSD",
+  "side": "buy",
+  "qty": "0.001",
+  "type": "market",
+  "time_in_force": "gtc",
+  "_note": "Requires signed trade gate via paper-order; Alpaca paper BTCUSD symbol."
+}
