@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from week_trader.brokers.alpaca_paper import AlpacaPaperError, submit_alpaca_paper_order
 from week_trader.gate_log import verify_gate_log_file
 from week_trader.prereg import load_preregistration
 from week_trader.util import load_json, repo_root, sha256_json
@@ -15,7 +16,7 @@ class PaperOrderError(Exception):
 
 
 def paper_order(order_intent_id: str, gate_log_path: Path, *, dry_run: bool = False) -> dict[str, Any]:
-    """Validate gate + risk + HALT before any broker call. Phase 1: no broker HTTP."""
+    """Validate gate + risk + HALT before any Alpaca paper broker call."""
     root = repo_root()
     ok, reason = verify_gate_log_file(gate_log_path)
     if not ok:
@@ -52,18 +53,35 @@ def paper_order(order_intent_id: str, gate_log_path: Path, *, dry_run: bool = Fa
     if venue.get("instrument_class") == "crypto_perp" and venue.get("paper_venue") == "alpaca_paper":
         raise PaperOrderError("Alpaca paper invalid for crypto_perp venue_contract")
 
-    result = {
+    intent = _load_order_intent(hypothesis_id, order_intent_id)
+    paper_venue = venue.get("paper_venue")
+    if paper_venue != "alpaca_paper":
+        raise PaperOrderError(f"unsupported paper_venue {paper_venue!r}")
+
+    result: dict[str, Any] = {
         "order_intent_id": order_intent_id,
         "hypothesis_id": hypothesis_id,
         "gate_log": str(gate_log_path.relative_to(root)),
         "broker_calls": 0,
-        "status": "validated_not_sent_phase1",
+        "status": "validated_dry_run" if dry_run else "pending_paper_submit",
     }
 
     if dry_run:
         result["dry_run"] = True
+    else:
+        try:
+            broker_resp = submit_alpaca_paper_order(intent=intent)
+        except AlpacaPaperError as exc:
+            raise PaperOrderError(str(exc)) from exc
+        result["broker_calls"] = 1
+        result["status"] = "submitted_paper"
+        result["alpaca_order_id"] = broker_resp.get("id")
+        result["broker_response"] = {
+            "id": broker_resp.get("id"),
+            "status": broker_resp.get("status"),
+            "symbol": broker_resp.get("symbol"),
+        }
 
-    # Phase 1: deliberately no ccxt/Alpaca calls — scaffold only.
     journal_dir = root / "paper" / hypothesis_id / "journal"
     journal_dir.mkdir(parents=True, exist_ok=True)
     log_path = journal_dir / "order-intents.jsonl"
@@ -71,6 +89,16 @@ def paper_order(order_intent_id: str, gate_log_path: Path, *, dry_run: bool = Fa
         handle.write(json.dumps(result, sort_keys=True) + "\n")
 
     return result
+
+
+def _load_order_intent(hypothesis_id: str, order_intent_id: str) -> dict[str, Any]:
+    path = repo_root() / "paper" / hypothesis_id / "intents" / f"{order_intent_id}.json"
+    if not path.is_file():
+        raise PaperOrderError(f"order intent not found: {path.relative_to(repo_root())}")
+    data = load_json(path)
+    if not isinstance(data, dict):
+        raise PaperOrderError("order intent must be a JSON object")
+    return data
 
 
 def _enforce_risk_limits(limits: dict[str, Any], hypothesis_id: str) -> None:
