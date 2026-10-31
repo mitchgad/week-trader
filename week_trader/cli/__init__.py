@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -8,6 +9,12 @@ from week_trader.jev_gate import JevGateError, run_jev_gate
 from week_trader.jev_state import write_state_artifact
 from week_trader.manifest import validate_manifest_file
 from week_trader.paper_order import PaperOrderError, paper_order
+from week_trader.paper_forward import (
+    PaperForwardError,
+    evaluate_tsmom_4h_signal,
+    record_signal,
+    run_forward_monitor_tick,
+)
 from week_trader.prereg import lint_jev_questions as lint_jev_questions_for_prereg
 from week_trader.prereg import load_preregistration
 from week_trader.gate4 import assert_gate4_closed
@@ -67,6 +74,31 @@ def main_lint_jev_questions(argv: list[str] | None = None) -> None:
             print(err, file=sys.stderr)
         raise SystemExit(1)
     print("ok")
+
+
+def main_paper_forward(argv: list[str] | None = None) -> None:
+    args = argv or sys.argv[1:]
+    hypothesis_id = _arg_value(args, "ID")
+    dry_run = any(arg in ("--dry-run", "DRY_RUN=1") for arg in args)
+    action = "monitor"
+    for arg in args:
+        if arg.startswith("ACTION="):
+            action = arg.split("=", 1)[1]
+    try:
+        if action == "signal":
+            closes_path = _optional_path(args, "CLOSES")
+            if closes_path is None or not closes_path.is_file():
+                _exit_fail("ACTION=signal requires CLOSES=<path-to-json-array>")
+            closes_raw = json.loads(closes_path.read_text(encoding="utf-8"))
+            if not isinstance(closes_raw, list):
+                _exit_fail("CLOSES file must be a JSON array of floats")
+            closes = [float(x) for x in closes_raw]
+            signal = evaluate_tsmom_4h_signal(closes)
+            print(record_signal(hypothesis_id, signal))
+        else:
+            print(run_forward_monitor_tick(hypothesis_id, dry_run=dry_run))
+    except PaperForwardError as exc:
+        _exit_fail(str(exc))
 
 
 def main_paper_order(argv: list[str] | None = None) -> None:
