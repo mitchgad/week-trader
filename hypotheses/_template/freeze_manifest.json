@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "_template",
+  "description": "Bind HYPOTHESIS.md, full preregistration.json, and data manifest before backtest or Jev.",
+  "artifacts": {
+    "HYPOTHESIS.md": "sha256:REPLACE_ON_FREEZE",
+    "preregistration.json": "sha256:REPLACE_ON_FREEZE",
+    "data_manifest": {
+      "path": "data/manifests/example-btc-spot.yaml",
+      "sha256": "REPLACE_ON_FREEZE"
+    }
+  },
+  "frozen_at_utc": null
+}

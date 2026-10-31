@@ -1,0 +1,7 @@
+{
+  "max_position_notional_usd": 5000,
+  "max_daily_loss_usd": 250,
+  "max_gross_exposure_usd": 10000,
+  "kill_switch_file_pattern": "paper/{hypothesis_id}/HALT",
+  "notes": "Enforced by scripts/paper-order before any broker call. v1: no live paths."
+}

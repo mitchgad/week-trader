@@ -1,0 +1,7 @@
+#!/usr/bin/env python3
+"""Thin wrapper — TypeSafe calls allowed only here."""
+
+from week_trader.cli.jev_gate import main
+
+if __name__ == "__main__":
+    main()

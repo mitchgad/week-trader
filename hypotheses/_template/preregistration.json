@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "_template",
+  "model_id": "jev-1.14.0",
+  "forbidden_model_ids": ["jev-latest"],
+  "max_gate_age_minutes": 15,
+  "data_manifest_id": "example-btc-spot-alpaca",
+  "metrics_schema_version": 1,
+  "thresholds": {
+    "spec_pass_min_probability": 0.65,
+    "backtest_promotion_min_score": 0.55,
+    "trade_gate_min_probability": 0.7
+  },
+  "jev_questions": {
+    "spec": [
+      {
+        "id": "spec_falsifiable",
+        "type": "noul",
+        "text": "Given state.fields.spec_has_universe_and_timing and state.fields.spec_has_cost_manifest_binding, is the spec falsifiable as written?",
+        "state_keys": ["fields.spec_has_universe_and_timing", "fields.spec_has_cost_manifest_binding"]
+      }
+    ],
+    "backtest_readiness": [
+      {
+        "id": "timing_no_lookahead",
+        "type": "noul",
+        "text": "Given state.fields.implementation_audit_pass and state.fields.unit_tests_pass, does implementation match spec bar timing?",
+        "state_keys": ["fields.implementation_audit_pass", "fields.unit_tests_pass"]
+      }
+    ],
+    "backtest": [
+      {
+        "id": "oos_meets_prereg",
+        "type": "score",
+        "text": "Given state.metrics.oos_sharpe_haircut and state.metrics.trial_count_n, does OOS justify paper vs preregistration?",
+        "state_keys": ["metrics.oos_sharpe_haircut", "metrics.trial_count_n"]
+      }
+    ],
+    "trade": [
+      {
+        "id": "operational_ok",
+        "type": "choice",
+        "choices": ["proceed", "block"],
+        "text": "Given state.fields.data_fresh and state.fields.within_risk_bands and state.fields.halt_absent, may code submit this order intent?",
+        "state_keys": ["fields.data_fresh", "fields.within_risk_bands", "fields.halt_absent"]
+      }
+    ],
+    "halt_clear": [
+      {
+        "id": "halt_clear_safe",
+        "type": "choice",
+        "choices": ["resume", "stay_halted"],
+        "text": "Given state.fields.halt_reason_resolved and state.fields.risk_within_limits, is resume authorized?",
+        "state_keys": ["fields.halt_reason_resolved", "fields.risk_within_limits"]
+      }
+    ]
+  },
+  "venue_contract": {
+    "execution_venue": "alpaca_crypto",
+    "paper_venue": "alpaca_paper",
+    "instrument_class": "crypto_spot",
+    "alpaca_limitation": "No BTC perp funding, ADL, or cross-margin simulation"
+  },
+  "engine_parity": {
+    "required_before_promotion": true,
+    "method": "golden_slice_or_second_engine",
+    "max_metric_delta": 0.01
+  }
+}

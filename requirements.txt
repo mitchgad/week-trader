@@ -1,0 +1,5 @@
+ccxt>=4.0
+pandas>=2.0
+quantstats>=0.0.62
+pyyaml>=6.0
+requests>=2.31

@@ -1,0 +1,5 @@
+#!/usr/bin/env python3
+from week_trader.cli.paper_order import main
+
+if __name__ == "__main__":
+    main()
