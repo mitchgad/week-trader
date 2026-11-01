@@ -206,6 +206,16 @@ def record_signal_from_live_bars(
     prereg = load_preregistration(hypothesis_id)
     manifest_path = resolve_manifest_for_hypothesis(hypothesis_id, prereg)
     manifest = load_data_manifest(manifest_path)
+
+    def _finish(signal: dict[str, Any]) -> dict[str, Any]:
+        return record_signal(
+            hypothesis_id,
+            signal,
+            submit_order=submit_order,
+            dry_run=dry_run,
+            **order_kwargs,
+        )
+
     attention = manifest.get("attention")
     if isinstance(attention, dict) and attention.get("vendor") == "google_trends_free":
         if attention.get("mode") == "positive_ratio":
@@ -234,48 +244,48 @@ def record_signal_from_live_bars(
         )
         signal["closes_source"] = "alpaca_live_1d_volume"
         signal["bar_count"] = len(closes)
-        return record_signal(hypothesis_id, signal)
+        return _finish(signal)
     if interval == "1Day" and hypothesis_id == "vgit-shy-term-carry-1d":
         closes_map = fetch_live_equity_daily_closes_map(hypothesis_id)
         signal = evaluate_vgit_shy_term_carry_1d(closes_map, hypothesis_id=hypothesis_id)
         signal["closes_source"] = "alpaca_live_1d"
         signal["symbols"] = list(closes_map.keys())
         signal["bar_count"] = min(len(v) for v in closes_map.values())
-        return record_signal(hypothesis_id, signal)
+        return _finish(signal)
     if interval == "1Day" and hypothesis_id == "vb-vv-size-spread-1d":
         closes_map = fetch_live_equity_daily_closes_map(hypothesis_id)
         signal = evaluate_vb_vv_size_spread_1d(closes_map, hypothesis_id=hypothesis_id)
         signal["closes_source"] = "alpaca_live_1d"
         signal["symbols"] = list(closes_map.keys())
         signal["bar_count"] = min(len(v) for v in closes_map.values())
-        return record_signal(hypothesis_id, signal)
+        return _finish(signal)
     if interval == "1Day" and hypothesis_id == "xbi-max-short-1d":
         closes = fetch_live_equity_daily_closes(hypothesis_id, min_bars=274)
         signal = evaluate_xbi_max_short_1d(closes, hypothesis_id=hypothesis_id)
         signal["closes_source"] = "alpaca_live_1d"
         signal["bar_count"] = len(closes)
-        return record_signal(hypothesis_id, signal)
+        return _finish(signal)
     if interval == "1Day" and hypothesis_id.endswith("-csmom-1d"):
         closes_map = fetch_live_equity_daily_closes_map(hypothesis_id)
         signal = evaluate_eem_xlf_csmom_1d_signal(closes_map, hypothesis_id=hypothesis_id)
         signal["closes_source"] = "alpaca_live_1d"
         signal["symbols"] = list(closes_map.keys())
         signal["bar_count"] = min(len(v) for v in closes_map.values())
-        return record_signal(hypothesis_id, signal)
+        return _finish(signal)
     if interval == "4h" and hypothesis_id == "crypto-alts-csmom-4h":
         closes_map = fetch_live_crypto_4h_closes_map(hypothesis_id)
         signal = evaluate_crypto_alts_csmom_4h_signal(closes_map, hypothesis_id=hypothesis_id)
         signal["closes_source"] = "alpaca_live_4h"
         signal["symbols"] = list(closes_map.keys())
         signal["bar_count"] = min(len(v) for v in closes_map.values())
-        return record_signal(hypothesis_id, signal)
+        return _finish(signal)
     if interval == "1Day" and hypothesis_id == "tlt-ief-pairs-1d":
         closes_map = fetch_live_equity_daily_closes_map(hypothesis_id)
         signal = evaluate_tlt_ief_pairs_1d_signal(closes_map, hypothesis_id=hypothesis_id)
         signal["closes_source"] = "alpaca_live_1d"
         signal["symbols"] = list(closes_map.keys())
         signal["bar_count"] = min(len(v) for v in closes_map.values())
-        return record_signal(hypothesis_id, signal)
+        return _finish(signal)
     symbol = manifest_trading_symbol(hypothesis_id)
     if interval == "4h":
         closes = fetch_live_4h_closes(hypothesis_id)
@@ -289,7 +299,7 @@ def record_signal_from_live_bars(
         raise PaperForwardError(f"unsupported live bar interval {interval!r}")
     signal["symbol"] = symbol
     signal["bar_count"] = len(closes)
-    return record_signal(hypothesis_id, signal)
+    return _finish(signal)
 
 
 def _attention_fetch_kwargs(attention: dict[str, Any]) -> dict[str, Any]:

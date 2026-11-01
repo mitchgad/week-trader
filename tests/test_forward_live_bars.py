@@ -67,6 +67,49 @@ def test_record_signal_from_live_bars(monkeypatch: pytest.MonkeyPatch, tmp_path:
     assert "signal" in events
 
 
+def test_record_signal_from_live_bars_forwards_submit_order(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr("week_trader.paper_forward.repo_root", lambda: tmp_path)
+    monkeypatch.setattr(
+        "week_trader.paper_forward.fetch_live_4h_closes",
+        lambda _hid, min_bars=8: [100.0, 101.0, 102.0, 103.0, 104.0, 105.0, 106.0, 107.0],
+    )
+    monkeypatch.setattr(
+        "week_trader.paper_forward.manifest_crypto_symbol",
+        lambda _hid: "BTC/USD",
+    )
+    captured: dict[str, object] = {}
+
+    def fake_record_signal(
+        hypothesis_id: str,
+        signal: dict[str, object],
+        *,
+        submit_order: bool = False,
+        dry_run: bool = False,
+        **order_kwargs: object,
+    ) -> dict[str, object]:
+        captured["hypothesis_id"] = hypothesis_id
+        captured["submit_order"] = submit_order
+        captured["dry_run"] = dry_run
+        captured["order_kwargs"] = order_kwargs
+        return {"recorded": True, "signal": signal, "order_submission": {"submitted": False}}
+
+    monkeypatch.setattr("week_trader.paper_forward.record_signal", fake_record_signal)
+    out = record_signal_from_live_bars(
+        "btc-spot-tsmom-4h",
+        submit_order=True,
+        dry_run=True,
+        fetch_positions=lambda: [],
+    )
+    assert out["order_submission"] == {"submitted": False}
+    assert captured["submit_order"] is True
+    assert captured["dry_run"] is True
+    order_kwargs = captured["order_kwargs"]
+    assert isinstance(order_kwargs, dict)
+    assert "fetch_positions" in order_kwargs
+
+
 def test_check_forward_anomalies_stale_status(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr("week_trader.forward_anomalies.repo_root", lambda: tmp_path)
     monkeypatch.setattr("week_trader.paper_forward.repo_root", lambda: tmp_path)
