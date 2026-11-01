@@ -13,6 +13,7 @@ from week_trader.manifest import (
 )
 from week_trader.paper_forward import FORWARD_STALE_STATUS_HOURS, read_last_signal_side
 from week_trader.prereg import compute_freeze_hashes, load_preregistration
+from week_trader.ci_evidence import deployed_git_sha, resolve_ci_pass_fields
 from week_trader.util import hypothesis_dir, load_json, repo_root, sha256_json
 
 
@@ -56,15 +57,19 @@ def build_jev_state(hypothesis_id: str, *, gate: str, metrics_path: Path | None 
     account_book_fields = _paper_account_book_fields(forward_ops.get("account_book"))
     trade_fields = _trade_gate_fields(hypothesis_id, gate) if gate == "trade" else {}
 
+    deployed_sha = deployed_git_sha()
+    impl_audit, unit_tests, _ci_meta = resolve_ci_pass_fields(deployed_sha)
+
     fields: dict[str, Any] = {
         "hypothesis_id": hypothesis_id,
         "gate": gate,
         "freeze_manifest_hash": sha256_json(freeze),
+        "deployed_git_sha": deployed_sha,
         "spec_has_universe_and_timing": _hypothesis_has_sections(hypothesis_id),
         "spec_has_cost_manifest_binding": bool(prereg.get("data_manifest_id")),
         **spec_fields,
-        "implementation_audit_pass": metrics.get("implementation_audit_pass", False),
-        "unit_tests_pass": metrics.get("unit_tests_pass", False),
+        "implementation_audit_pass": impl_audit,
+        "unit_tests_pass": unit_tests,
         "data_fresh": data_fresh,
         "within_risk_bands": within_risk_bands,
         "halt_absent": not halt_path.exists(),
