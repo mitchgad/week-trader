@@ -2,7 +2,9 @@
 
 **Purpose:** Record strategy families and example hypotheses **not** run on the project’s **Alpaca paper** account in v1. No `hypotheses/` specs, Jev questions, backtests, or orders for these IDs here.
 
-**Active builds (do not duplicate):** `btc-spot-tsmom-4h` (BTC/USD), `eth-spot-tsmom-4h` (ETH/USD). One owner per symbol.
+**Active builds (do not duplicate):** `btc-spot-tsmom-4h` (BTC/USD), `eth-spot-tsmom-4h` (ETH/USD), `dia-mean-reversion-1d` (DIA), `eem-xlf-csmom-1d` (EEM, XLF), `tlt-ief-pairs-1d` (TLT, IEF). One owner per symbol.
+
+**Alpaca paper equity shorts (2026-11-01):** Alpaca’s [Paper Trading](https://docs.alpaca.markets/us/docs/paper-trading) feature table lists **Short Selling ✅** on paper (same API as live, paper base URL only). Project paper account `shorting_enabled=true`. **Crypto spot cannot be shorted** on Alpaca — alt short sleeves stay parked.
 
 **Sources:** [week-trader-plan.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/week-trader-plan.md), [research-gap-fill.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/research-gap-fill.md), [research-mean-reversion.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/research-mean-reversion.md), [research-premia-crypto.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/research-premia-crypto.md), [algorithms-and-paper-trade.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/algorithms-and-paper-trade.md).
 
@@ -50,27 +52,23 @@ Sizing, vol targeting, costs, walk-forward, paper parity, and regime overlays ar
 
 ## Mean reversion (family)
 
-**Status:** parked
+**Status:** active build — **`dia-mean-reversion-1d`** (DIA daily long-only **loser leg**; Israel & Moskowitz long-only scope). Not parked for lack of equity shorts.
 
-Canonical **days–weeks** equity reversal and z-score templates require **short losers / long winners** and two-sided costs ([research-mean-reversion.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/research-mean-reversion.md) P5 Lehmann; P9 Da et al.; B2 Chan). **BTC spot** MR is **not** decision-grade consensus — asymmetric and explosive subsamples conflict ([research-gap-fill.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/research-gap-fill.md) §2). Alpaca paper is not a honest home for the published short-heavy designs at this horizon.
+**Still parked (crypto):** BTC/alt spot MR — contested dynamics and **no crypto short** on Alpaca ([research-gap-fill.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/research-gap-fill.md) §2).
 
 ---
 
 ## Pairs / statistical arbitrage (family)
 
-**Status:** parked
+**Status:** active build — **`tlt-ief-pairs-1d`** (TLT/IEF daily spread convergence; Gatev-style distance pairs). ETB Treasury ETFs on Alpaca paper with **equity shorting enabled** — not parked for lack of a short leg.
 
-Pairs and stat-arb are **dollar-neutral two-leg** books with **short** side and borrow/cointegration break risk ([research-mean-reversion.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/research-mean-reversion.md) B3 Vidyamurthy; B4 Pole; P41 basis/perp convergence in premia map is **carry**, not Gatev-style equity pairs). Not reducible to single-symbol Alpaca spot long-only.
+**Still parked:** Crypto / perp **basis** pairs ([research-premia-crypto.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/research-premia-crypto.md) carry class) and multi-venue arb.
 
 ---
 
 ## Cross-sectional momentum (family)
 
-**Status:** ready-to-spec *(build owned by another worker — do not implement here)*
-
-**Symbol (proposed):** **EEM/USD** (or equivalent Alpaca-traded EEM exposure) within a **fixed long-only** cross-section among liquid ETFs **DIA, TLT, EEM, XLF** — free bars on Alpaca; no point-in-time **stock** panel or paid vendor universe ([algorithms-and-paper-trade.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/algorithms-and-paper-trade.md) A.3 PIT rule; [research-gap-fill.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/research-gap-fill.md) §5).
-
-**Citation:** Cross-sectional rank continuation (Jegadeesh–Titman lineage in [research-momentum.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/research-momentum.md)); **long-only** implementation captures ~half of classic spread (Israel & Moskowitz, *JFE* 2013, [DOI 10.1016/j.jfineco.2012.11.005](https://doi.org/10.1016/j.jfineco.2012.11.005) — F11 in momentum map). Excluded symbols already building or reserved: BTC/USD, ETH/USD, SPY, IWM, GLD.
+**Status:** active build — **`eem-xlf-csmom-1d`** (long-only relative winner between **EEM** and **XLF** only; Israel & Moskowitz 2013 long-only momentum; Jegadeesh–Titman rank logic). Does **not** use SPY, IWM, GLD, BTC, ETH, DIA, TLT, or IEF.
 
 ---
 
