@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "gld-negative-attention-1d",
+  "symbol_owners": {
+    "GLD": "gld-negative-attention-1d"
+  },
+  "strategy_slice": {
+    "max_notional_usd": 5000,
+    "fill_tag": "wt-gld-negative-attention-1d"
+  },
+  "notes": "Merged over paper_account_guards.json by week_trader.paper_guards_config — does not change BTC/ETH slices."
+}

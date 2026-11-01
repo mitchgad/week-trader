@@ -11,6 +11,7 @@ from week_trader.brokers.alpaca_paper import (
     fetch_paper_positions,
 )
 from week_trader.paper_forward import normalize_alpaca_crypto_symbol
+from week_trader.paper_guards_config import merged_guard_view
 from week_trader.util import load_json, repo_root
 
 FetchPositions = Callable[..., list[dict[str, Any]]]
@@ -108,7 +109,8 @@ def enforce_shared_account_guards(
     Shared Alpaca paper account guards (v1): account halt, symbol owner, capital slice,
     opposite-side open-order lock, fill tag for client_order_id.
     """
-    config = load_guards_config()
+    base_config = load_guards_config()
+    config = merged_guard_view(hypothesis_id, base_config)
     assert_account_halt_absent(config)
 
     symbol_raw = intent.get("symbol")

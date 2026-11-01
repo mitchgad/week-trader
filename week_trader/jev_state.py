@@ -126,6 +126,8 @@ def _spec_fields(hypothesis_id: str, prereg: dict[str, Any]) -> dict[str, Any]:
     except ManifestError:
         cost_ok = False
     engine_parity = bool((prereg.get("engine_parity") or {}).get("required_before_promotion"))
+    attention_fields = _attention_manifest_fields(manifest_path)
+    equity_gld_only = _equity_gld_contract(prereg, manifest_path)
     return {
         "venue_contract_spot_only": spot_only,
         "disconfirmers_documented": disconfirmers,
@@ -134,8 +136,63 @@ def _spec_fields(hypothesis_id: str, prereg: dict[str, Any]) -> dict[str, Any]:
         "manifest_single_spot_symbol_matches": _manifest_single_symbol_matches(prereg, manifest_path),
         "horizon_thinness_acknowledged": _hypothesis_horizon_thinness_acknowledged(hypothesis_id),
         "primary_citations_present": _hypothesis_primary_citations_present(hypothesis_id),
+        **attention_fields,
+        **equity_gld_only,
         **proof,
     }
+
+
+def _attention_manifest_fields(manifest_path: Path | None) -> dict[str, Any]:
+    if manifest_path is None or not manifest_path.is_file():
+        return {
+            "attention_manifest_present": False,
+            "free_attention_vendor_bound": False,
+            "attention_pit_partial_acknowledged": False,
+        }
+    manifest = load_data_manifest(manifest_path)
+    attention = manifest.get("attention")
+    if not isinstance(attention, dict):
+        return {
+            "attention_manifest_present": False,
+            "free_attention_vendor_bound": False,
+            "attention_pit_partial_acknowledged": False,
+        }
+    vendor = attention.get("vendor")
+    vendor_ok = vendor == "google_trends_free"
+    pit_ok = attention.get("exclude_partial_bars") is True
+    keywords_ok = isinstance(attention.get("negative_keyword"), str) and isinstance(
+        attention.get("baseline_keyword"), str
+    )
+    return {
+        "attention_manifest_present": True,
+        "free_attention_vendor_bound": vendor_ok and keywords_ok,
+        "attention_pit_partial_acknowledged": pit_ok,
+    }
+
+
+def _equity_gld_contract(prereg: dict[str, Any], manifest_path: Path | None) -> dict[str, Any]:
+    venue = prereg.get("venue_contract")
+    if not isinstance(venue, dict):
+        return {"venue_contract_equity_gld_only": False}
+    allowed = venue.get("allowed_symbols")
+    allowed_gld = (
+        isinstance(allowed, list)
+        and len(allowed) == 1
+        and str(allowed[0]).strip().upper() == "GLD"
+        and venue.get("instrument_class") == "equity"
+        and venue.get("paper_venue") == "alpaca_paper"
+    )
+    manifest_gld = False
+    if manifest_path is not None and manifest_path.is_file():
+        manifest = load_data_manifest(manifest_path)
+        symbols = manifest.get("universe", {}).get("symbols")
+        manifest_gld = (
+            manifest.get("instrument_class") == "equity"
+            and isinstance(symbols, list)
+            and len(symbols) == 1
+            and str(symbols[0]).strip().upper() == "GLD"
+        )
+    return {"venue_contract_equity_gld_only": allowed_gld and manifest_gld}
 
 
 def _proof_contract_fields(prereg: dict[str, Any], hypothesis_id: str) -> dict[str, Any]:

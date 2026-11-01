@@ -9,13 +9,16 @@ from typing import Any, Callable
 from week_trader.brokers.alpaca_paper import (
     AlpacaPaperError,
     fetch_crypto_4h_bar_closes,
+    fetch_equity_daily_bar_closes,
     fetch_paper_account,
     fetch_paper_open_orders,
     fetch_paper_order,
     fetch_paper_positions,
 )
+from week_trader.attention.google_trends import GoogleTrendsError, fetch_daily_interest_pair
 from week_trader.manifest import load_data_manifest, resolve_manifest_for_hypothesis
 from week_trader.prereg import load_preregistration
+from week_trader.strategies.gld_negative_attention_1d import evaluate_gld_negative_attention_1d
 from week_trader.util import load_json, repo_root
 
 
@@ -98,6 +101,14 @@ def fetch_live_4h_closes(hypothesis_id: str, *, min_bars: int = 8) -> list[float
 
 
 def record_signal_from_live_bars(hypothesis_id: str) -> dict[str, Any]:
+    prereg = load_preregistration(hypothesis_id)
+    manifest_path = resolve_manifest_for_hypothesis(hypothesis_id, prereg)
+    manifest = load_data_manifest(manifest_path)
+    instrument = manifest.get("instrument_class")
+    bars = manifest.get("bars") if isinstance(manifest.get("bars"), dict) else {}
+    interval = bars.get("interval")
+    if instrument == "equity" and interval == "1d" and hypothesis_id == "gld-negative-attention-1d":
+        return record_gld_negative_attention_live_signal(hypothesis_id, manifest)
     symbol = manifest_crypto_symbol(hypothesis_id)
     closes = fetch_live_4h_closes(hypothesis_id)
     signal = evaluate_tsmom_4h_signal(closes, hypothesis_id=hypothesis_id)
@@ -105,6 +116,49 @@ def record_signal_from_live_bars(hypothesis_id: str) -> dict[str, Any]:
     signal["symbol"] = symbol
     signal["bar_count"] = len(closes)
     return record_signal(hypothesis_id, signal)
+
+
+def record_gld_negative_attention_live_signal(
+    hypothesis_id: str, manifest: dict[str, Any]
+) -> dict[str, Any]:
+    attention = manifest.get("attention")
+    if not isinstance(attention, dict):
+        raise PaperForwardError("manifest attention block required for GLD attention signal")
+    negative_kw = attention.get("negative_keyword")
+    baseline_kw = attention.get("baseline_keyword")
+    if not isinstance(negative_kw, str) or not isinstance(baseline_kw, str):
+        raise PaperForwardError("manifest attention keywords required")
+    lookback_rows = int(attention.get("lookback_rows", 252))
+    high_q = float(attention.get("high_ratio_quantile", 0.8))
+    symbol = _manifest_primary_symbol(manifest)
+    try:
+        trend_rows = fetch_daily_interest_pair(negative_kw, baseline_kw)
+        daily_closes = fetch_equity_daily_bar_closes(symbol, min_bars=2)
+    except (GoogleTrendsError, AlpacaPaperError) as exc:
+        raise PaperForwardError(str(exc)) from exc
+    signal = evaluate_gld_negative_attention_1d(
+        trend_rows,
+        hypothesis_id=hypothesis_id,
+        lookback_rows=lookback_rows,
+        high_ratio_quantile=high_q,
+    )
+    signal["closes_source"] = "google_trends_free_plus_alpaca_live_1d"
+    signal["last_close"] = daily_closes[-1]
+    signal["bar_count"] = len(daily_closes)
+    return record_signal(hypothesis_id, signal)
+
+
+def _manifest_primary_symbol(manifest: dict[str, Any]) -> str:
+    universe = manifest.get("universe")
+    if not isinstance(universe, dict):
+        raise PaperForwardError("manifest universe missing")
+    symbols = universe.get("symbols")
+    if not isinstance(symbols, list) or not symbols:
+        raise PaperForwardError("manifest universe.symbols missing")
+    symbol = symbols[0]
+    if not isinstance(symbol, str) or not symbol.strip():
+        raise PaperForwardError("manifest symbol invalid")
+    return symbol.strip().upper()
 
 
 def evaluate_tsmom_4h_signal(closes: list[float], *, hypothesis_id: str) -> dict[str, Any]:
@@ -179,8 +233,15 @@ def run_forward_monitor_tick(
     pnl = _pnl_snapshot(account, positions)
     btc_spot_position: dict[str, Any] | None = None
     try:
-        manifest_symbol = manifest_crypto_symbol(hypothesis_id)
-        btc_spot_position = summarize_spot_position(positions, manifest_symbol)
+        prereg = load_preregistration(hypothesis_id)
+        manifest_path = resolve_manifest_for_hypothesis(hypothesis_id, prereg)
+        manifest = load_data_manifest(manifest_path)
+        if manifest.get("instrument_class") == "crypto_spot":
+            manifest_symbol = manifest_crypto_symbol(hypothesis_id)
+            btc_spot_position = summarize_spot_position(positions, manifest_symbol)
+        elif manifest.get("instrument_class") == "equity":
+            manifest_symbol = _manifest_primary_symbol(manifest)
+            btc_spot_position = summarize_equity_position(positions, manifest_symbol)
     except PaperForwardError:
         btc_spot_position = None
     append_forward_event(hypothesis_id, "pnl_snapshot", pnl)
@@ -376,6 +437,30 @@ def summarize_spot_position(positions: list[dict[str, Any]], manifest_symbol: st
         }
     return {
         "symbol": manifest_symbol,
+        "qty": 0.0,
+        "market_value": 0.0,
+        "open": False,
+    }
+
+
+def summarize_equity_position(positions: list[dict[str, Any]], symbol: str) -> dict[str, Any]:
+    target = symbol.strip().upper()
+    for position in positions:
+        raw_symbol = position.get("symbol")
+        if not raw_symbol:
+            continue
+        if str(raw_symbol).strip().upper() != target:
+            continue
+        qty = _float_or_none(position.get("qty")) or 0.0
+        market_value = _float_or_none(position.get("market_value"))
+        return {
+            "symbol": str(raw_symbol),
+            "qty": qty,
+            "market_value": market_value,
+            "open": qty > 0,
+        }
+    return {
+        "symbol": symbol,
         "qty": 0.0,
         "market_value": 0.0,
         "open": False,
