@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "gld-negative-attention-1d",
+  "model_id": "jev-1.14.0",
+  "forbidden_model_ids": ["jev-latest"],
+  "max_gate_age_minutes": 15,
+  "data_manifest_id": "gld-negative-attention-1d-alpaca",
+  "metrics_schema_version": 1,
+  "trial_count_n": 0,
+  "walk_forward_protocol": "not_applicable_paper_forward_v1",
+  "thresholds": {
+    "spec_pass_min_probability": 0.65,
+    "backtest_promotion_min_score": 0.55,
+    "trade_gate_min_probability": 0.7,
+    "oos_sharpe_haircut_min": 0.0
+  },
+  "kill_criteria_ref": "week-trader-plan.md C2; algorithms-and-paper-trade.md C2",
+  "jev_questions": {
+    "spec": [
+      {
+        "id": "spec_falsifiable_gld_attention",
+        "type": "noul",
+        "text": "Given state.fields.spec_has_universe_and_timing and state.fields.spec_has_cost_manifest_binding and state.fields.attention_manifest_present, is the GLD negative-attention spec falsifiable as written?",
+        "state_keys": [
+          "fields.spec_has_universe_and_timing",
+          "fields.spec_has_cost_manifest_binding",
+          "fields.attention_manifest_present"
+        ]
+      },
+      {
+        "id": "free_trends_not_invented",
+        "type": "noul",
+        "text": "Given state.fields.free_attention_vendor_bound and state.fields.attention_pit_partial_acknowledged, does the spec bind free Google Trends attention without inventing a proprietary series?",
+        "state_keys": [
+          "fields.free_attention_vendor_bound",
+          "fields.attention_pit_partial_acknowledged"
+        ]
+      },
+      {
+        "id": "equity_gld_forward_proof",
+        "type": "noul",
+        "text": "Given state.fields.venue_contract_equity_gld_only and state.fields.disconfirmers_documented and state.fields.backtest_metrics_do_not_satisfy_paper_proof, does the spec require Alpaca paper GLD forward proof rather than backtest-only promotion?",
+        "state_keys": [
+          "fields.venue_contract_equity_gld_only",
+          "fields.disconfirmers_documented",
+          "fields.backtest_metrics_do_not_satisfy_paper_proof"
+        ]
+      }
+    ],
+    "backtest_readiness": [
+      {
+        "id": "paper_forward_only_v1",
+        "type": "noul",
+        "text": "Given state.fields.backtest_metrics_do_not_satisfy_paper_proof and state.fields.engine_parity_required, is v1 promotion blocked on backtest parity for this hypothesis?",
+        "state_keys": [
+          "fields.backtest_metrics_do_not_satisfy_paper_proof",
+          "fields.engine_parity_required"
+        ]
+      }
+    ],
+    "backtest": [
+      {
+        "id": "backtest_not_used_v1",
+        "type": "score",
+        "text": "Given state.metrics.trial_count_n and state.fields.backtest_metrics_do_not_satisfy_paper_proof, should backtest scores be ignored for v1 paper promotion?",
+        "state_keys": ["metrics.trial_count_n", "fields.backtest_metrics_do_not_satisfy_paper_proof"]
+      }
+    ],
+    "trade": [
+      {
+        "id": "operational_ok_gld",
+        "type": "choice",
+        "choices": ["proceed", "block"],
+        "text": "Given state.fields.data_fresh and state.fields.within_risk_bands and state.fields.halt_absent and state.fields.signal_matches_intent, may code submit this GLD order intent?",
+        "state_keys": [
+          "fields.data_fresh",
+          "fields.within_risk_bands",
+          "fields.halt_absent",
+          "fields.signal_matches_intent"
+        ]
+      }
+    ],
+    "halt_clear": [
+      {
+        "id": "halt_clear_safe_gld",
+        "type": "choice",
+        "choices": ["resume", "stay_halted"],
+        "text": "Given state.fields.halt_reason_resolved and state.fields.risk_within_limits, is resume authorized for gld-negative-attention-1d?",
+        "state_keys": ["fields.halt_reason_resolved", "fields.risk_within_limits"]
+      }
+    ]
+  },
+  "venue_contract": {
+    "execution_venue": "alpaca_equities",
+    "paper_venue": "alpaca_paper",
+    "instrument_class": "equity",
+    "allowed_symbols": ["GLD"],
+    "alpaca_limitation": "Alpaca paper US equities sim — GLD long-only rail"
+  },
+  "proof_contract": {
+    "operational_validation": "alpaca_paper_equity_forward_only",
+    "backtest_metrics_do_not_satisfy_paper_proof": true,
+    "forbidden_promotion_evidence": [
+      "crypto_perp_funding_pnl",
+      "invented_attention_series",
+      "btc_eth_forward_logs_as_gld_proof",
+      "backtest_replay_without_forward_events"
+    ],
+    "allowed_operational_proof": [
+      "alpaca_paper_forward_events",
+      "alpaca_equity_gld_order_fills"
+    ],
+    "citations_ref": "docs/intake/gld-negative-attention-1d-research.md"
+  },
+  "engine_parity": {
+    "required_before_promotion": false,
+    "method": "not_required_v1_paper_forward",
+    "max_metric_delta": 0.01
+  }
+}

@@ -110,21 +110,17 @@ def _spec_fields(hypothesis_id: str, prereg: dict[str, Any]) -> dict[str, Any]:
         manifest_funding_null = False
 
     spot_only = (
-        venue.get("paper_venue") == "alpaca_paper"
+        instrument == "crypto_spot"
+        and venue.get("paper_venue") == "alpaca_paper"
+        and manifest_instrument == "crypto_spot"
         and manifest_funding_null
-        and (
-            (
-                instrument == "crypto_spot"
-                and manifest_instrument == "crypto_spot"
-            )
-            or (
-                instrument == "equity_etf"
-                and manifest_instrument == "equity_etf"
-            )
-        )
+    )
+    equity_paper_only = (
+        instrument == "equity"
+        and venue.get("paper_venue") == "alpaca_paper"
+        and manifest_instrument == "equity"
     )
     disconfirmers = _hypothesis_disconfirmers_ok(hypothesis_id)
-    long_only_loser = _hypothesis_long_only_loser_leg_documented(hypothesis_id)
     proof = _proof_contract_fields(prereg, hypothesis_id)
     cost_ok = False
     manifest_path: Path | None = None
@@ -135,17 +131,76 @@ def _spec_fields(hypothesis_id: str, prereg: dict[str, Any]) -> dict[str, Any]:
     except ManifestError:
         cost_ok = False
     engine_parity = bool((prereg.get("engine_parity") or {}).get("required_before_promotion"))
+    attention_fields = _attention_manifest_fields(manifest_path)
+    equity_gld_only = _equity_gld_contract(prereg, manifest_path)
+    manifest_symbol_matches = _manifest_single_symbol_matches(prereg, manifest_path)
     return {
         "venue_contract_spot_only": spot_only,
+        "venue_contract_equity_paper_only": equity_paper_only,
         "disconfirmers_documented": disconfirmers,
-        "long_only_loser_leg_documented": long_only_loser,
         "manifest_cost_block_present": cost_ok,
         "engine_parity_required": engine_parity,
-        "manifest_single_spot_symbol_matches": _manifest_single_symbol_matches(prereg, manifest_path),
+        "manifest_single_spot_symbol_matches": manifest_symbol_matches and spot_only,
+        "manifest_single_equity_symbol_matches": manifest_symbol_matches and equity_paper_only,
         "horizon_thinness_acknowledged": _hypothesis_horizon_thinness_acknowledged(hypothesis_id),
         "primary_citations_present": _hypothesis_primary_citations_present(hypothesis_id),
+        **attention_fields,
+        **equity_gld_only,
         **proof,
     }
+
+
+def _attention_manifest_fields(manifest_path: Path | None) -> dict[str, Any]:
+    if manifest_path is None or not manifest_path.is_file():
+        return {
+            "attention_manifest_present": False,
+            "free_attention_vendor_bound": False,
+            "attention_pit_partial_acknowledged": False,
+        }
+    manifest = load_data_manifest(manifest_path)
+    attention = manifest.get("attention")
+    if not isinstance(attention, dict):
+        return {
+            "attention_manifest_present": False,
+            "free_attention_vendor_bound": False,
+            "attention_pit_partial_acknowledged": False,
+        }
+    vendor = attention.get("vendor")
+    vendor_ok = vendor == "google_trends_free"
+    pit_ok = attention.get("exclude_partial_bars") is True
+    keywords_ok = isinstance(attention.get("negative_keyword"), str) and isinstance(
+        attention.get("baseline_keyword"), str
+    )
+    return {
+        "attention_manifest_present": True,
+        "free_attention_vendor_bound": vendor_ok and keywords_ok,
+        "attention_pit_partial_acknowledged": pit_ok,
+    }
+
+
+def _equity_gld_contract(prereg: dict[str, Any], manifest_path: Path | None) -> dict[str, Any]:
+    venue = prereg.get("venue_contract")
+    if not isinstance(venue, dict):
+        return {"venue_contract_equity_gld_only": False}
+    allowed = venue.get("allowed_symbols")
+    allowed_gld = (
+        isinstance(allowed, list)
+        and len(allowed) == 1
+        and str(allowed[0]).strip().upper() == "GLD"
+        and venue.get("instrument_class") == "equity"
+        and venue.get("paper_venue") == "alpaca_paper"
+    )
+    manifest_gld = False
+    if manifest_path is not None and manifest_path.is_file():
+        manifest = load_data_manifest(manifest_path)
+        symbols = manifest.get("universe", {}).get("symbols")
+        manifest_gld = (
+            manifest.get("instrument_class") == "equity"
+            and isinstance(symbols, list)
+            and len(symbols) == 1
+            and str(symbols[0]).strip().upper() == "GLD"
+        )
+    return {"venue_contract_equity_gld_only": allowed_gld and manifest_gld}
 
 
 def _proof_contract_fields(prereg: dict[str, Any], hypothesis_id: str) -> dict[str, Any]:
@@ -174,12 +229,13 @@ def _proof_contract_fields(prereg: dict[str, Any], hypothesis_id: str) -> dict[s
     forbids_perp = any(
         isinstance(item, str) and "perp" in item.lower() for item in forbidden
     )
-    forward_only = proof.get("operational_validation") in (
+    forward_only = proof.get("operational_validation") in {
         "alpaca_paper_crypto_spot_forward_only",
         "alpaca_paper_equity_forward_only",
-    )
+    }
     spot_proof_allowed = any(
-        isinstance(item, str) and "spot" in item.lower() for item in allowed
+        isinstance(item, str) and ("spot" in item.lower() or "equity" in item.lower())
+        for item in allowed
     )
     return {
         "proof_contract_present": True,
@@ -235,19 +291,10 @@ def _hypothesis_disconfirmers_ok(hypothesis_id: str) -> bool:
     dis_idx = text.index("## disconfirmers")
     dis_section = text[dis_idx:]
     proof_markers = ("perp funding", "perp", "funding p", "binance", "carry", "basis")
-    return any(marker in dis_section for marker in proof_markers)
-
-
-def _hypothesis_long_only_loser_leg_documented(hypothesis_id: str) -> bool:
-    if hypothesis_id != "dia-mean-reversion-1d":
-        return False
-    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
-    if not path.is_file():
-        return False
-    text = path.read_text(encoding="utf-8").lower()
-    if "long-only scope" not in text and "long-only loser" not in text:
-        return False
-    return "10.1016/j.jfineco.2012.11.005" in text or "israel" in text
+    if any(marker in dis_section for marker in proof_markers):
+        return True
+    equity_markers = ("live alpaca", "api.alpaca.markets", "backtest as gate 3", "gate 3 proof")
+    return any(marker in dis_section for marker in equity_markers)
 
 
 def _forward_operational_fields(hypothesis_id: str) -> dict[str, Any]:
