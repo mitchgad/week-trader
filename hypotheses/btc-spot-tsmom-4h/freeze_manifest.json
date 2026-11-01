@@ -3,8 +3,8 @@
   "hypothesis_id": "btc-spot-tsmom-4h",
   "description": "Bind HYPOTHESIS.md, full preregistration.json, and data manifest before backtest or Jev.",
   "artifacts": {
-    "HYPOTHESIS.md": "sha256:70b1e9966c12de220640b8169ef4b20a04cae848bdcc7e254d8768a64e1030e5",
-    "preregistration.json": "sha256:dad681344c3f7e776880b1d0beacc85bf61c66f8d6c0f566b344d6a1399ff0c8",
+    "HYPOTHESIS.md": "sha256:d180d3c9b1e9cca3c54a385f5cb10e5fe8a2b522e333db51ee792b9f9e135f1f",
+    "preregistration.json": "sha256:a4c5e03446d5bbcaa97fffc7495da3ec0d6f09657c7792c219823043ae897644",
     "data_manifest": {
       "path": "data/manifests/btc-spot-tsmom-4h-alpaca.yaml",
       "sha256": "c761cf0950e6dd83f9ea1789f9055ce794b9835af165e9459407fd2133b74c7e"

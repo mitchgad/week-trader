@@ -85,8 +85,29 @@ def _spec_fields(hypothesis_id: str, prereg: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(venue, dict):
         venue = {}
     instrument = venue.get("instrument_class")
-    spot_only = instrument == "crypto_spot" and venue.get("paper_venue") == "alpaca_paper"
-    disconfirmers = _hypothesis_has_disconfirmers(hypothesis_id)
+    manifest_instrument: str | None = None
+    manifest_funding_null = False
+    try:
+        manifest_path = resolve_manifest_for_hypothesis(hypothesis_id, prereg)
+        manifest = load_data_manifest(manifest_path)
+        manifest_instrument = manifest.get("instrument_class")
+        costs = manifest.get("costs")
+        if isinstance(costs, dict):
+            manifest_funding_null = costs.get("funding_series_id") in (None, "") and costs.get(
+                "funding_interval_hours"
+            ) in (None, "")
+    except ManifestError:
+        manifest_instrument = None
+        manifest_funding_null = False
+
+    spot_only = (
+        instrument == "crypto_spot"
+        and venue.get("paper_venue") == "alpaca_paper"
+        and manifest_instrument == "crypto_spot"
+        and manifest_funding_null
+    )
+    disconfirmers = _hypothesis_disconfirmers_ok(hypothesis_id)
+    proof = _proof_contract_fields(prereg)
     cost_ok = False
     try:
         manifest_path = resolve_manifest_for_hypothesis(hypothesis_id, prereg)
@@ -100,7 +121,49 @@ def _spec_fields(hypothesis_id: str, prereg: dict[str, Any]) -> dict[str, Any]:
         "disconfirmers_documented": disconfirmers,
         "manifest_cost_block_present": cost_ok,
         "engine_parity_required": engine_parity,
+        **proof,
     }
+
+
+def _proof_contract_fields(prereg: dict[str, Any]) -> dict[str, Any]:
+    proof = prereg.get("proof_contract")
+    if not isinstance(proof, dict):
+        return {
+            "proof_contract_present": False,
+            "forbidden_perp_funding_proof_in_prereg": False,
+            "promotion_proof_alpaca_spot_forward_only": False,
+        }
+    forbidden = proof.get("forbidden_promotion_evidence")
+    if not isinstance(forbidden, list):
+        forbidden = []
+    allowed = proof.get("allowed_operational_proof")
+    if not isinstance(allowed, list):
+        allowed = []
+    forbids_perp = any(
+        isinstance(item, str) and "perp" in item.lower() for item in forbidden
+    )
+    forward_only = proof.get("operational_validation") == "alpaca_paper_crypto_spot_forward_only"
+    spot_proof_allowed = any(
+        isinstance(item, str) and "spot" in item.lower() for item in allowed
+    )
+    return {
+        "proof_contract_present": True,
+        "forbidden_perp_funding_proof_in_prereg": forbids_perp,
+        "promotion_proof_alpaca_spot_forward_only": forward_only and spot_proof_allowed,
+    }
+
+
+def _hypothesis_disconfirmers_ok(hypothesis_id: str) -> bool:
+    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
+    if not path.is_file():
+        return False
+    text = path.read_text(encoding="utf-8").lower()
+    if "## disconfirmers" not in text:
+        return False
+    dis_idx = text.index("## disconfirmers")
+    dis_section = text[dis_idx:]
+    proof_markers = ("perp funding", "perp", "funding p", "binance", "carry", "basis")
+    return any(marker in dis_section for marker in proof_markers)
 
 
 def _forward_operational_fields(hypothesis_id: str) -> dict[str, Any]:
@@ -180,11 +243,7 @@ def _hypothesis_has_sections(hypothesis_id: str) -> bool:
 
 
 def _hypothesis_has_disconfirmers(hypothesis_id: str) -> bool:
-    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
-    if not path.is_file():
-        return False
-    text = path.read_text(encoding="utf-8").lower()
-    return "## disconfirmers" in text
+    return _hypothesis_disconfirmers_ok(hypothesis_id)
 
 
 def _age_hours(timestamp_utc: str) -> float | None:

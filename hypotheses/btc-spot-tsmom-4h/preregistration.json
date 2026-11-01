@@ -75,7 +75,21 @@
     "execution_venue": "alpaca_crypto",
     "paper_venue": "alpaca_paper",
     "instrument_class": "crypto_spot",
+    "allowed_symbols": ["BTC/USD"],
     "alpaca_limitation": "Alpaca paper is crypto spot and US equities sim only — no BTC perp funding, ADL, or cross-margin"
+  },
+  "proof_contract": {
+    "operational_validation": "alpaca_paper_crypto_spot_forward_only",
+    "forbidden_promotion_evidence": [
+      "crypto_perp_funding_pnl",
+      "binance_futures_testnet",
+      "basis_carry_backtest_as_spot_proof"
+    ],
+    "allowed_operational_proof": [
+      "alpaca_paper_forward_events",
+      "alpaca_crypto_spot_order_fills"
+    ],
+    "citations_ref": "docs/intake/btc-spot-tsmom-4h-venue-proof.md"
   },
   "engine_parity": {
     "required_before_promotion": true,
