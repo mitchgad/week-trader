@@ -115,6 +115,11 @@ def _spec_fields(hypothesis_id: str, prereg: dict[str, Any]) -> dict[str, Any]:
         and manifest_instrument == "crypto_spot"
         and manifest_funding_null
     )
+    equity_paper_only = (
+        instrument == "equity"
+        and venue.get("paper_venue") == "alpaca_paper"
+        and manifest_instrument == "equity"
+    )
     disconfirmers = _hypothesis_disconfirmers_ok(hypothesis_id)
     proof = _proof_contract_fields(prereg, hypothesis_id)
     cost_ok = False
@@ -126,12 +131,15 @@ def _spec_fields(hypothesis_id: str, prereg: dict[str, Any]) -> dict[str, Any]:
     except ManifestError:
         cost_ok = False
     engine_parity = bool((prereg.get("engine_parity") or {}).get("required_before_promotion"))
+    manifest_symbol_matches = _manifest_single_symbol_matches(prereg, manifest_path)
     return {
         "venue_contract_spot_only": spot_only,
+        "venue_contract_equity_paper_only": equity_paper_only,
         "disconfirmers_documented": disconfirmers,
         "manifest_cost_block_present": cost_ok,
         "engine_parity_required": engine_parity,
-        "manifest_single_spot_symbol_matches": _manifest_single_symbol_matches(prereg, manifest_path),
+        "manifest_single_spot_symbol_matches": manifest_symbol_matches and spot_only,
+        "manifest_single_equity_symbol_matches": manifest_symbol_matches and equity_paper_only,
         "horizon_thinness_acknowledged": _hypothesis_horizon_thinness_acknowledged(hypothesis_id),
         "primary_citations_present": _hypothesis_primary_citations_present(hypothesis_id),
         **proof,
@@ -164,9 +172,13 @@ def _proof_contract_fields(prereg: dict[str, Any], hypothesis_id: str) -> dict[s
     forbids_perp = any(
         isinstance(item, str) and "perp" in item.lower() for item in forbidden
     )
-    forward_only = proof.get("operational_validation") == "alpaca_paper_crypto_spot_forward_only"
+    forward_only = proof.get("operational_validation") in {
+        "alpaca_paper_crypto_spot_forward_only",
+        "alpaca_paper_equity_forward_only",
+    }
     spot_proof_allowed = any(
-        isinstance(item, str) and "spot" in item.lower() for item in allowed
+        isinstance(item, str) and ("spot" in item.lower() or "equity" in item.lower())
+        for item in allowed
     )
     return {
         "proof_contract_present": True,
@@ -222,7 +234,10 @@ def _hypothesis_disconfirmers_ok(hypothesis_id: str) -> bool:
     dis_idx = text.index("## disconfirmers")
     dis_section = text[dis_idx:]
     proof_markers = ("perp funding", "perp", "funding p", "binance", "carry", "basis")
-    return any(marker in dis_section for marker in proof_markers)
+    if any(marker in dis_section for marker in proof_markers):
+        return True
+    equity_markers = ("live alpaca", "api.alpaca.markets", "backtest as gate 3", "gate 3 proof")
+    return any(marker in dis_section for marker in equity_markers)
 
 
 def _forward_operational_fields(hypothesis_id: str) -> dict[str, Any]:

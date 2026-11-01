@@ -9,6 +9,7 @@ from typing import Any, Callable
 from week_trader.brokers.alpaca_paper import (
     AlpacaPaperError,
     fetch_crypto_4h_bar_closes,
+    fetch_equity_daily_bar_closes,
     fetch_paper_account,
     fetch_paper_open_orders,
     fetch_paper_order,
@@ -70,7 +71,7 @@ def record_signal(hypothesis_id: str, signal: dict[str, Any]) -> dict[str, Any]:
     return {"recorded": True, "signal": signal}
 
 
-def manifest_crypto_symbol(hypothesis_id: str) -> str:
+def manifest_trading_symbol(hypothesis_id: str) -> str:
     prereg = load_preregistration(hypothesis_id)
     manifest_path = resolve_manifest_for_hypothesis(hypothesis_id, prereg)
     manifest = load_data_manifest(manifest_path)
@@ -83,10 +84,27 @@ def manifest_crypto_symbol(hypothesis_id: str) -> str:
     symbol = symbols[0]
     if not isinstance(symbol, str) or not symbol.strip():
         raise PaperForwardError("manifest symbol invalid")
-    bars = manifest.get("bars")
-    if isinstance(bars, dict) and bars.get("interval") != "4h":
-        raise PaperForwardError("live 4h fetch requires manifest bars.interval 4h")
     return symbol.strip()
+
+
+def manifest_bar_interval(hypothesis_id: str) -> str:
+    prereg = load_preregistration(hypothesis_id)
+    manifest_path = resolve_manifest_for_hypothesis(hypothesis_id, prereg)
+    manifest = load_data_manifest(manifest_path)
+    bars = manifest.get("bars")
+    if not isinstance(bars, dict):
+        raise PaperForwardError("manifest bars missing")
+    interval = bars.get("interval")
+    if not isinstance(interval, str) or not interval.strip():
+        raise PaperForwardError("manifest bars.interval missing")
+    return interval.strip()
+
+
+def manifest_crypto_symbol(hypothesis_id: str) -> str:
+    symbol = manifest_trading_symbol(hypothesis_id)
+    if manifest_bar_interval(hypothesis_id) != "4h":
+        raise PaperForwardError("live 4h fetch requires manifest bars.interval 4h")
+    return symbol
 
 
 def fetch_live_4h_closes(hypothesis_id: str, *, min_bars: int = 8) -> list[float]:
@@ -97,11 +115,29 @@ def fetch_live_4h_closes(hypothesis_id: str, *, min_bars: int = 8) -> list[float
         raise PaperForwardError(str(exc)) from exc
 
 
+def fetch_live_equity_daily_closes(hypothesis_id: str, *, min_bars: int = 130) -> list[float]:
+    symbol = manifest_trading_symbol(hypothesis_id)
+    if manifest_bar_interval(hypothesis_id) != "1Day":
+        raise PaperForwardError("live daily fetch requires manifest bars.interval 1Day")
+    try:
+        return fetch_equity_daily_bar_closes(symbol, min_bars=min_bars)
+    except AlpacaPaperError as exc:
+        raise PaperForwardError(str(exc)) from exc
+
+
 def record_signal_from_live_bars(hypothesis_id: str) -> dict[str, Any]:
-    symbol = manifest_crypto_symbol(hypothesis_id)
-    closes = fetch_live_4h_closes(hypothesis_id)
-    signal = evaluate_tsmom_4h_signal(closes, hypothesis_id=hypothesis_id)
-    signal["closes_source"] = "alpaca_live_4h"
+    symbol = manifest_trading_symbol(hypothesis_id)
+    interval = manifest_bar_interval(hypothesis_id)
+    if interval == "4h":
+        closes = fetch_live_4h_closes(hypothesis_id)
+        signal = evaluate_tsmom_4h_signal(closes, hypothesis_id=hypothesis_id)
+        signal["closes_source"] = "alpaca_live_4h"
+    elif interval == "1Day":
+        closes = fetch_live_equity_daily_closes(hypothesis_id)
+        signal = evaluate_tsmom_1d_signal(closes, hypothesis_id=hypothesis_id)
+        signal["closes_source"] = "alpaca_live_1d"
+    else:
+        raise PaperForwardError(f"unsupported live bar interval {interval!r}")
     signal["symbol"] = symbol
     signal["bar_count"] = len(closes)
     return record_signal(hypothesis_id, signal)
@@ -113,6 +149,26 @@ def evaluate_tsmom_4h_signal(closes: list[float], *, hypothesis_id: str) -> dict
     Observation only — orders still require paper-order + trade gate.
     """
     formation_bars = 6
+    if len(closes) < formation_bars + 1:
+        raise PaperForwardError(f"need at least {formation_bars + 1} closes for tsmom signal")
+    window = closes[-(formation_bars + 1) : -1]
+    formation_log_return = sum(math.log(window[i] / window[i - 1]) for i in range(1, len(window)))
+    side = "long" if formation_log_return > 0 else "flat"
+    return {
+        "strategy": hypothesis_id,
+        "formation_bars": formation_bars,
+        "formation_log_return": formation_log_return,
+        "side": side,
+        "last_close": closes[-1],
+    }
+
+
+def evaluate_tsmom_1d_signal(closes: list[float], *, hypothesis_id: str) -> dict[str, Any]:
+    """
+    Daily TSMOM signal at session close (formation = sum of log returns over prior 126 sessions).
+    Observation only — orders still require paper-order + trade gate.
+    """
+    formation_bars = 126
     if len(closes) < formation_bars + 1:
         raise PaperForwardError(f"need at least {formation_bars + 1} closes for tsmom signal")
     window = closes[-(formation_bars + 1) : -1]
@@ -179,7 +235,7 @@ def run_forward_monitor_tick(
     pnl = _pnl_snapshot(account, positions)
     btc_spot_position: dict[str, Any] | None = None
     try:
-        manifest_symbol = manifest_crypto_symbol(hypothesis_id)
+        manifest_symbol = manifest_trading_symbol(hypothesis_id)
         btc_spot_position = summarize_spot_position(positions, manifest_symbol)
     except PaperForwardError:
         btc_spot_position = None
@@ -358,13 +414,20 @@ def normalize_alpaca_crypto_symbol(symbol: str) -> str:
     return symbol.replace("/", "").upper()
 
 
+def normalize_trading_symbol(symbol: str) -> str:
+    cleaned = symbol.strip().upper()
+    if "/" in cleaned:
+        return normalize_alpaca_crypto_symbol(cleaned)
+    return cleaned
+
+
 def summarize_spot_position(positions: list[dict[str, Any]], manifest_symbol: str) -> dict[str, Any]:
-    target = normalize_alpaca_crypto_symbol(manifest_symbol)
+    target = normalize_trading_symbol(manifest_symbol)
     for position in positions:
         raw_symbol = position.get("symbol")
         if not raw_symbol:
             continue
-        if normalize_alpaca_crypto_symbol(str(raw_symbol)) != target:
+        if normalize_trading_symbol(str(raw_symbol)) != target:
             continue
         qty = _float_or_none(position.get("qty")) or 0.0
         market_value = _float_or_none(position.get("market_value"))

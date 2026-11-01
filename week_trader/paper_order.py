@@ -177,22 +177,24 @@ def _validate_spot_intent(hypothesis_id: str, intent: dict[str, Any], prereg: di
     venue = prereg.get("venue_contract", {})
     if not isinstance(venue, dict):
         raise PaperOrderError("venue_contract missing")
-    if venue.get("instrument_class") != "crypto_spot":
-        raise PaperOrderError("order intents require crypto_spot venue_contract")
+    instrument_class = venue.get("instrument_class")
+    if instrument_class not in {"crypto_spot", "equity"}:
+        raise PaperOrderError("order intents require crypto_spot or equity venue_contract")
     symbol = intent.get("symbol")
     if not isinstance(symbol, str) or not symbol.strip():
         raise PaperOrderError("order intent symbol required")
     normalized = symbol.strip().upper()
-    perp_markers = ("PERP", "USDTM", "USDTP", "SWAP", "-P")
-    if any(marker in normalized for marker in perp_markers):
-        raise PaperOrderError("perp-like symbol forbidden on Alpaca spot paper rail")
+    if instrument_class == "crypto_spot":
+        perp_markers = ("PERP", "USDTM", "USDTP", "SWAP", "-P")
+        if any(marker in normalized for marker in perp_markers):
+            raise PaperOrderError("perp-like symbol forbidden on Alpaca spot paper rail")
     try:
         manifest_path = resolve_manifest_for_hypothesis(hypothesis_id, prereg)
         manifest = load_data_manifest(manifest_path)
     except ManifestError as exc:
         raise PaperOrderError(str(exc)) from exc
-    if manifest.get("instrument_class") != "crypto_spot":
-        raise PaperOrderError("manifest instrument_class must be crypto_spot")
+    if manifest.get("instrument_class") != instrument_class:
+        raise PaperOrderError("manifest instrument_class must match venue_contract")
     universe = manifest.get("universe")
     if not isinstance(universe, dict):
         raise PaperOrderError("manifest universe missing")
@@ -201,7 +203,7 @@ def _validate_spot_intent(hypothesis_id: str, intent: dict[str, Any], prereg: di
         raise PaperOrderError("manifest universe.symbols missing")
     allowed = {_manifest_symbol_to_alpaca(s) for s in symbols if isinstance(s, str)}
     if normalized not in allowed:
-        raise PaperOrderError(f"symbol {normalized!r} not in manifest spot universe")
+        raise PaperOrderError(f"symbol {normalized!r} not in manifest universe")
 
 
 def _manifest_symbol_to_alpaca(manifest_symbol: str) -> str:

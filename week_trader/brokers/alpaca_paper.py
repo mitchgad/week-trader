@@ -223,6 +223,61 @@ def fetch_crypto_4h_bar_closes(
     return closes
 
 
+EQUITY_1D_TIMEFRAME = "1Day"
+
+
+def fetch_equity_daily_bar_closes(
+    symbol: str,
+    *,
+    min_bars: int = 130,
+    lookback_days: int = 400,
+    http_get: HttpGet | None = None,
+) -> list[float]:
+    """Completed 1Day US equity bar closes from Alpaca market data."""
+    if min_bars < 2:
+        raise AlpacaPaperError("min_bars must be at least 2")
+    start = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    params = {
+        "symbols": symbol,
+        "timeframe": EQUITY_1D_TIMEFRAME,
+        "start": start,
+        "limit": "10000",
+        "sort": "asc",
+        "adjustment": "split",
+    }
+    payload = alpaca_paper_request(
+        "GET",
+        "/v2/stocks/bars",
+        params=params,
+        http_get=http_get,
+        base_url=data_base_url(),
+    )
+    if not isinstance(payload, dict):
+        raise AlpacaPaperError("Alpaca equity bars response must be object — fail closed")
+    bars_root = payload.get("bars")
+    if not isinstance(bars_root, dict):
+        raise AlpacaPaperError("Alpaca equity bars missing bars object — fail closed")
+    series = bars_root.get(symbol)
+    if not isinstance(series, list):
+        raise AlpacaPaperError(f"Alpaca equity bars missing series for {symbol!r} — fail closed")
+    closes: list[float] = []
+    for bar in series:
+        if not isinstance(bar, dict):
+            continue
+        close = bar.get("c")
+        if close is None:
+            continue
+        try:
+            closes.append(float(close))
+        except (TypeError, ValueError) as exc:
+            raise AlpacaPaperError("Alpaca equity bar close not numeric — fail closed") from exc
+    if len(closes) < min_bars:
+        raise AlpacaPaperError(
+            f"need at least {min_bars} daily closes for signal; got {len(closes)} — fail closed"
+        )
+    return closes
+
+
 def build_alpaca_order_body(intent: dict[str, Any]) -> dict[str, str]:
     for field in ("symbol", "side", "qty"):
         if field not in intent:

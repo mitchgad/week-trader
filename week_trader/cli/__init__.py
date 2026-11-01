@@ -12,7 +12,9 @@ from week_trader.paper_order import PaperOrderError, paper_order
 from week_trader.forward_anomalies import check_forward_anomalies
 from week_trader.paper_forward import (
     PaperForwardError,
+    evaluate_tsmom_1d_signal,
     evaluate_tsmom_4h_signal,
+    manifest_bar_interval,
     record_signal,
     record_signal_from_live_bars,
     run_forward_monitor_tick,
@@ -105,7 +107,13 @@ def main_paper_forward(argv: list[str] | None = None) -> None:
                 if not isinstance(closes_raw, list):
                     _exit_fail("CLOSES file must be a JSON array of floats")
                 closes = [float(x) for x in closes_raw]
-                signal = evaluate_tsmom_4h_signal(closes, hypothesis_id=hypothesis_id)
+                interval = manifest_bar_interval(hypothesis_id)
+                if interval == "1Day":
+                    signal = evaluate_tsmom_1d_signal(closes, hypothesis_id=hypothesis_id)
+                elif interval == "4h":
+                    signal = evaluate_tsmom_4h_signal(closes, hypothesis_id=hypothesis_id)
+                else:
+                    _exit_fail(f"unsupported CLOSES interval {interval!r}")
                 print(record_signal(hypothesis_id, signal))
         elif action == "alerts":
             print(check_forward_anomalies(hypothesis_id))
