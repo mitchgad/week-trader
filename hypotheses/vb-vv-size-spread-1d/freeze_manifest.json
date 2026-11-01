@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "vb-vv-size-spread-1d",
+  "description": "Bind HYPOTHESIS.md, full preregistration.json, and data manifest before backtest or Jev.",
+  "frozen_at_utc": "2026-11-01T02:34:08Z",
+  "artifacts": {
+    "HYPOTHESIS.md": "sha256:c11cc5145e588df23195e8ea2969a9c209fe041693b779d600505b3b193c7535",
+    "preregistration.json": "sha256:4c5c0c3a37c17e0a26285b0e3b60116ae52d82a4466044e7d41d9276d84c8d8a",
+    "data_manifest": {
+      "path": "data/manifests/vb-vv-size-spread-1d-alpaca.yaml",
+      "sha256": "sha256:16cb9f0733153f56b3ad5d1b05f0b40ab5518ec6e605975ced3d7307200ddbf3"
+    }
+  }
+}

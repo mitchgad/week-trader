@@ -7,6 +7,20 @@ from typing import Any
 
 import requests
 
+# pytrends still passes method_whitelist= to urllib3 Retry (removed in urllib3 v2).
+import urllib3.util.retry as _urllib3_retry
+
+_orig_retry_init = _urllib3_retry.Retry.__init__
+
+
+def _retry_init_compat(self, *args: Any, **kwargs: Any) -> None:
+    if "method_whitelist" in kwargs:
+        kwargs["allowed_methods"] = kwargs.pop("method_whitelist")
+    _orig_retry_init(self, *args, **kwargs)
+
+
+_urllib3_retry.Retry.__init__ = _retry_init_compat  # type: ignore[method-assign]
+
 TRENDS_EXPLORE_URL = "https://trends.google.com/trends/api/explore"
 TRENDS_MULTILINE_URL = "https://trends.google.com/trends/api/widgetdata/multiline"
 
@@ -42,21 +56,21 @@ def fetch_daily_interest_pair(
     """
     errors: list[str] = []
     try:
+        return _fetch_daily_interest_pytrends(
+            negative_keyword,
+            baseline_keyword,
+            timeframe=timeframe,
+            geo=geo,
+        )
+    except GoogleTrendsError as exc:
+        errors.append(str(exc))
+    try:
         return _fetch_daily_interest_direct(
             negative_keyword,
             baseline_keyword,
             timeframe=timeframe,
             geo=geo,
             session=session,
-        )
-    except GoogleTrendsError as exc:
-        errors.append(str(exc))
-    try:
-        return _fetch_daily_interest_pytrends(
-            negative_keyword,
-            baseline_keyword,
-            timeframe=timeframe,
-            geo=geo,
         )
     except GoogleTrendsError as exc:
         errors.append(str(exc))

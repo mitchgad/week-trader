@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "vgit-shy-term-carry-1d",
+  "description": "Bind HYPOTHESIS.md, full preregistration.json, and data manifest before backtest or Jev.",
+  "frozen_at_utc": "2026-11-01T02:33:27Z",
+  "artifacts": {
+    "HYPOTHESIS.md": "sha256:f79dd9bae967a5d2f945516b22493402faa4b4bbceae57dcac4debfc934b1892",
+    "preregistration.json": "sha256:0a4ed40a8609e8ca340ceb482ebdf0df188a69b1b3575baf3418c4cd99c80605",
+    "data_manifest": {
+      "path": "data/manifests/vgit-shy-term-carry-1d-alpaca.yaml",
+      "sha256": "sha256:01741eb62dbd7fd3f8ad4e51725fe1a25da91c13aa659e29d002e76039b4e054"
+    }
+  }
+}

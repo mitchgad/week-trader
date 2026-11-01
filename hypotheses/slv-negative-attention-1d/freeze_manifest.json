@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "slv-negative-attention-1d",
+  "description": "Bind HYPOTHESIS.md, full preregistration.json, and data manifest before backtest or Jev.",
+  "frozen_at_utc": "2026-11-01T02:32:42Z",
+  "artifacts": {
+    "HYPOTHESIS.md": "sha256:e7c208f5cad4fb0212f35a25b43d49e0a2cfd80920bb046d8e3beb8ba70aceb7",
+    "preregistration.json": "sha256:1e8c0f75338f790d8a66c081424119635c3a5cde558804627c23abe7de693019",
+    "data_manifest": {
+      "path": "data/manifests/slv-negative-attention-1d-alpaca.yaml",
+      "sha256": "sha256:741fff3ee4dbb34c093d5873b0bb8cbdc61153e8e8864d736e2c2c0cfcfec0e2"
+    }
+  }
+}

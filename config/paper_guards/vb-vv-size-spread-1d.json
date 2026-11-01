@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "vb-vv-size-spread-1d",
+  "symbol_owners": {
+    "VB": "vb-vv-size-spread-1d",
+    "VV": "vb-vv-size-spread-1d"
+  },
+  "strategy_slices": {
+    "vb-vv-size-spread-1d": {
+      "max_notional_usd": 5000,
+      "fill_tag": "wt-vb-vv-size-spread-1d"
+    }
+  }
+}

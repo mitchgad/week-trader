@@ -1,4 +1,12 @@
 {"client_order_id": "wt-_template--submit-intent", "fill_tag": "wt-_template", "hypothesis_id": "_template", "order_intent_id": "submit-intent", "qty": "0.001", "side": "buy", "symbol": "XLCIUSD", "timestamp_utc": "2026-11-01T02:10:12Z"}
 {"client_order_id": "wt-_template--submit-intent", "fill_tag": "wt-_template", "hypothesis_id": "_template", "order_intent_id": "submit-intent", "qty": "0.001", "side": "buy", "symbol": "XLCIUSD", "timestamp_utc": "2026-11-01T02:18:48Z"}
 {"client_order_id": "wt-_template--submit-intent", "fill_tag": "wt-_template", "hypothesis_id": "_template", "order_intent_id": "submit-intent", "qty": "0.001", "side": "buy", "symbol": "XLCIUSD", "timestamp_utc": "2026-11-01T02:20:18Z"}
+<<<<<<< HEAD
+{"client_order_id": "wt-_template--submit-intent", "fill_tag": "wt-_template", "hypothesis_id": "_template", "order_intent_id": "submit-intent", "qty": "0.001", "side": "buy", "symbol": "XLCIUSD", "timestamp_utc": "2026-11-01T02:25:30Z"}
+{"client_order_id": "wt-_template--submit-intent", "fill_tag": "wt-_template", "hypothesis_id": "_template", "order_intent_id": "submit-intent", "qty": "0.001", "side": "buy", "symbol": "XLCIUSD", "timestamp_utc": "2026-11-01T02:25:32Z"}
+{"client_order_id": "wt-_template--submit-intent", "fill_tag": "wt-_template", "hypothesis_id": "_template", "order_intent_id": "submit-intent", "qty": "0.001", "side": "buy", "symbol": "XLCIUSD", "timestamp_utc": "2026-11-01T02:27:13Z"}
+{"client_order_id": "wt-_template--submit-intent", "fill_tag": "wt-_template", "hypothesis_id": "_template", "order_intent_id": "submit-intent", "qty": "0.001", "side": "buy", "symbol": "XLCIUSD", "timestamp_utc": "2026-11-01T02:31:06Z"}
+{"client_order_id": "wt-_template--submit-intent", "fill_tag": "wt-_template", "hypothesis_id": "_template", "order_intent_id": "submit-intent", "qty": "0.001", "side": "buy", "symbol": "XLCIUSD", "timestamp_utc": "2026-11-01T02:33:27Z"}
+=======
 {"client_order_id": "wt-_template--submit-intent", "fill_tag": "wt-_template", "hypothesis_id": "_template", "order_intent_id": "submit-intent", "qty": "0.001", "side": "buy", "symbol": "XLCIUSD", "timestamp_utc": "2026-11-01T02:23:02Z"}
+>>>>>>> origin/main

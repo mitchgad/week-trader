@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "crypto-alts-csmom-4h",
+  "description": "Bind HYPOTHESIS.md, full preregistration.json, and data manifest before backtest or Jev.",
+  "frozen_at_utc": "2026-11-01T02:32:42Z",
+  "artifacts": {
+    "HYPOTHESIS.md": "sha256:1e64f9283c3df56f988306ee06d6f079f80353633300b4daf33d5b4be610d893",
+    "preregistration.json": "sha256:e22251b6c0e46794d5aada2dc637e2434351a49c50d9027a6507f8a3e05ee8fb",
+    "data_manifest": {
+      "path": "data/manifests/crypto-alts-csmom-4h-alpaca.yaml",
+      "sha256": "sha256:935a357df3caf01f0786b18f35c8c226b2640cdb7ecbed277331382137a41dbe"
+    }
+  }
+}

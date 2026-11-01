@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "vgit-shy-term-carry-1d",
+  "symbol_owners": {
+    "VGIT": "vgit-shy-term-carry-1d",
+    "SHY": "vgit-shy-term-carry-1d"
+  },
+  "strategy_slices": {
+    "vgit-shy-term-carry-1d": {
+      "max_notional_usd": 5000,
+      "fill_tag": "wt-vgit-shy-term-carry-1d"
+    }
+  }
+}
