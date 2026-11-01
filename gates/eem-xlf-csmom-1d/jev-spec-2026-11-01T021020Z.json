@@ -1,0 +1,60 @@
+{
+  "freeze_manifest_hash": "e025e985b9710074ea79a474f9452822a9da268dc04d75a54e810b2de06fd6cc",
+  "gate": "spec",
+  "hypothesis_id": "eem-xlf-csmom-1d",
+  "log_signature": "b855ff91c3102f9c5807722b4b09654d45e7c78c842d75720d3e5dc997307116",
+  "model_id": "jev-1.14.0",
+  "pass": true,
+  "request_hash": "f19392b9e883da3107a289c8c34a010fbb6ba4e9d5c8b5cbc00211c74bcd7a97",
+  "response": {
+    "answers": {
+      "equity_paper_not_perp_eem_xlf": {
+        "noul": 0.82,
+        "type": "noul"
+      },
+      "long_only_csmom_israel": {
+        "noul": 0.71,
+        "type": "noul"
+      },
+      "spec_falsifiable_eem_xlf": {
+        "noul": 0.79,
+        "type": "noul"
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 1357,
+      "output_tokens": 77
+    }
+  },
+  "response_body_hash": "6346dffca9792961eeebca3f332c0fdb2bcd7d73149b3e228bd139e87ed900b0",
+  "state_hash": "9c3c68348f6259e49824188d5b816a2dfdbfb9a81cc599382043144603e1aaa7",
+  "threshold_compare": {
+    "comparisons": [
+      {
+        "min_required": 0.65,
+        "pass": true,
+        "probability": 0.79,
+        "question_id": "spec_falsifiable_eem_xlf",
+        "type": "noul"
+      },
+      {
+        "min_required": 0.65,
+        "pass": true,
+        "probability": 0.71,
+        "question_id": "long_only_csmom_israel",
+        "type": "noul"
+      },
+      {
+        "min_required": 0.65,
+        "pass": true,
+        "probability": 0.82,
+        "question_id": "equity_paper_not_perp_eem_xlf",
+        "type": "noul"
+      }
+    ],
+    "gate": "spec",
+    "pass": true
+  },
+  "timestamp_utc": "2026-11-01T02:10:20Z"
+}

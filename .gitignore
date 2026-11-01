@@ -16,6 +16,8 @@ gates/*/
 !gates/btc-spot-tsmom-4h/
 !gates/eth-spot-tsmom-4h/
 !gates/dia-mean-reversion-1d/
+!gates/eem-xlf-csmom-1d/
+!gates/tlt-ief-pairs-1d/
 backtests/*/
 !backtests/.gitkeep
 !backtests/btc-spot-tsmom-4h/

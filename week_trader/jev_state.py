@@ -11,7 +11,7 @@ from week_trader.manifest import (
     resolve_manifest_for_hypothesis,
     validate_manifest_costs,
 )
-from week_trader.paper_forward import FORWARD_STALE_STATUS_HOURS, read_last_signal_side
+from week_trader.paper_forward import FORWARD_STALE_STATUS_HOURS, read_last_signal_payload, read_last_signal_side
 from week_trader.prereg import compute_freeze_hashes, load_preregistration
 from week_trader.util import hypothesis_dir, load_json, repo_root, sha256_json
 
@@ -125,6 +125,8 @@ def _spec_fields(hypothesis_id: str, prereg: dict[str, Any]) -> dict[str, Any]:
     )
     disconfirmers = _hypothesis_disconfirmers_ok(hypothesis_id)
     long_only_loser = _hypothesis_long_only_loser_leg_documented(hypothesis_id)
+    long_only_csmom = _hypothesis_long_only_csmom_documented(hypothesis_id)
+    pairs_short = _hypothesis_pairs_short_leg_documented(hypothesis_id)
     proof = _proof_contract_fields(prereg, hypothesis_id)
     cost_ok = False
     manifest_path: Path | None = None
@@ -139,9 +141,12 @@ def _spec_fields(hypothesis_id: str, prereg: dict[str, Any]) -> dict[str, Any]:
         "venue_contract_spot_only": spot_only,
         "disconfirmers_documented": disconfirmers,
         "long_only_loser_leg_documented": long_only_loser,
+        "long_only_csmom_documented": long_only_csmom,
+        "pairs_short_leg_documented": pairs_short,
         "manifest_cost_block_present": cost_ok,
         "engine_parity_required": engine_parity,
         "manifest_single_spot_symbol_matches": _manifest_single_symbol_matches(prereg, manifest_path),
+        "manifest_symbols_match_venue": _manifest_symbols_match_prereg(prereg, manifest_path),
         "horizon_thinness_acknowledged": _hypothesis_horizon_thinness_acknowledged(hypothesis_id),
         "primary_citations_present": _hypothesis_primary_citations_present(hypothesis_id),
         **proof,
@@ -250,6 +255,26 @@ def _hypothesis_long_only_loser_leg_documented(hypothesis_id: str) -> bool:
     return "10.1016/j.jfineco.2012.11.005" in text or "israel" in text
 
 
+def _hypothesis_long_only_csmom_documented(hypothesis_id: str) -> bool:
+    if hypothesis_id != "eem-xlf-csmom-1d":
+        return False
+    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
+    if not path.is_file():
+        return False
+    text = path.read_text(encoding="utf-8").lower()
+    return "long only" in text and "10.1016/j.jfineco.2012.11.005" in text
+
+
+def _hypothesis_pairs_short_leg_documented(hypothesis_id: str) -> bool:
+    if hypothesis_id != "tlt-ief-pairs-1d":
+        return False
+    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
+    if not path.is_file():
+        return False
+    text = path.read_text(encoding="utf-8").lower()
+    return "short" in text and "tlt" in text and "ief" in text
+
+
 def _forward_operational_fields(hypothesis_id: str) -> dict[str, Any]:
     forward = repo_root() / "paper" / hypothesis_id / "forward"
     status_path = forward / "status.json"
@@ -353,10 +378,21 @@ def _trade_gate_fields(hypothesis_id: str, gate: str) -> dict[str, Any]:
     last_side = read_last_signal_side(
         repo_root() / "paper" / hypothesis_id / "forward" / "events.jsonl"
     )
+    last_payload = read_last_signal_payload(
+        repo_root() / "paper" / hypothesis_id / "forward" / "events.jsonl"
+    )
     intent_side = str(intent.get("side", "")).lower()
+    intent_symbol = str(intent.get("symbol", "")).upper()
     signal_matches = False
     if last_side == "long" and intent_side == "buy":
-        signal_matches = True
+        if isinstance(last_payload, dict):
+            target = last_payload.get("target_symbol")
+            if isinstance(target, str) and target.upper() == intent_symbol:
+                signal_matches = True
+            elif target is None and intent_symbol:
+                signal_matches = True
+        else:
+            signal_matches = True
     if last_side == "flat" and intent_side in {"sell", "buy"}:
         signal_matches = False
     return {
@@ -463,6 +499,28 @@ def _manifest_single_symbol_matches(prereg: dict[str, Any], manifest_path: Path 
     if not isinstance(symbols, list) or len(symbols) != 1:
         return False
     return str(symbols[0]).upper().replace("/", "") == str(allowed[0]).upper().replace("/", "")
+
+
+def _manifest_symbols_match_prereg(prereg: dict[str, Any], manifest_path: Path | None) -> bool:
+    venue = prereg.get("venue_contract")
+    if not isinstance(venue, dict):
+        return False
+    allowed = venue.get("allowed_symbols")
+    if not isinstance(allowed, list) or not allowed:
+        return False
+    if manifest_path is None or not manifest_path.is_file():
+        return False
+    manifest = load_data_manifest(manifest_path)
+    universe = manifest.get("universe")
+    if not isinstance(universe, dict):
+        return False
+    symbols = universe.get("symbols")
+    if not isinstance(symbols, list):
+        return False
+    norm = lambda s: str(s).upper().replace("/", "")
+    return sorted(norm(s) for s in symbols if isinstance(s, str)) == sorted(
+        norm(s) for s in allowed if isinstance(s, str)
+    )
 
 
 def _hypothesis_horizon_thinness_acknowledged(hypothesis_id: str) -> bool:

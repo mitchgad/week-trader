@@ -1,0 +1,39 @@
+name: paper-forward-eem-xlf-csmom-1d
+
+on:
+  schedule:
+    - cron: "35 21 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  forward-paper-eem-xlf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Gate 4 closed
+        run: make gate4-closed
+      - name: Paper forward monitor + daily signal
+        env:
+          ALPACA_PAPER_KEY: ${{ secrets.ALPACA_PAPER_KEY }}
+          ALPACA_PAPER_SECRET: ${{ secrets.ALPACA_PAPER_SECRET }}
+        run: |
+          set -euo pipefail
+          ID=eem-xlf-csmom-1d
+          paper-forward "ID=${ID}" CHECK_ALERTS=1
+          paper-forward "ID=${ID}" "ACTION=signal" "CLOSES=live"
+          paper-forward "ID=${ID}" ACTION=alerts
+      - name: Upload forward artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-forward-eem-xlf-csmom-1d
+          path: |
+            paper/eem-xlf-csmom-1d/forward/status.json
+            paper/eem-xlf-csmom-1d/forward/alerts.json
+            paper/eem-xlf-csmom-1d/forward/events.jsonl
+          if-no-files-found: ignore
