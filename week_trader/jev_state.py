@@ -53,6 +53,8 @@ def build_jev_state(hypothesis_id: str, *, gate: str, metrics_path: Path | None 
         if "risk_within_limits" in metrics
         else forward_ops.get("within_risk_bands", False)
     )
+    account_book_fields = _paper_account_book_fields(forward_ops.get("account_book"))
+    trade_fields = _trade_gate_fields(hypothesis_id, gate, forward_ops) if gate == "trade" else {}
 
     fields: dict[str, Any] = {
         "hypothesis_id": hypothesis_id,
@@ -72,8 +74,15 @@ def build_jev_state(hypothesis_id: str, *, gate: str, metrics_path: Path | None 
         "forward_monitor_age_hours": forward_ops.get("forward_monitor_age_hours"),
         "last_signal_side": forward_ops.get("last_signal_side"),
         "btc_spot_open": forward_ops.get("btc_spot_open", False),
+        **account_book_fields,
+        **trade_fields,
         "artifact_hashes": hashes,
     }
+    fields["operational_antecedents_satisfied"] = (
+        bool(fields.get("data_fresh"))
+        and bool(fields.get("within_risk_bands"))
+        and bool(fields.get("halt_absent"))
+    )
 
     state = {"fields": fields, "metrics": metrics_file if metrics_file else metrics}
     state["_state_hash"] = sha256_json({"fields": fields, "metrics": state["metrics"]})
@@ -223,6 +232,7 @@ def _forward_operational_fields(hypothesis_id: str) -> dict[str, Any]:
         "btc_spot_open": False,
         "data_fresh": False,
         "within_risk_bands": False,
+        "account_book": None,
     }
     if not status_path.is_file():
         return out
@@ -235,7 +245,12 @@ def _forward_operational_fields(hypothesis_id: str) -> dict[str, Any]:
     ts_raw = loaded.get("timestamp_utc")
     age_hours = _age_hours(ts_raw) if isinstance(ts_raw, str) else None
     out["forward_monitor_age_hours"] = age_hours
-    if age_hours is not None and age_hours <= FORWARD_STALE_STATUS_HOURS:
+
+    book = loaded.get("account_book")
+    if isinstance(book, dict):
+        out["account_book"] = book
+
+    if _account_book_fresh(age_hours, book):
         out["data_fresh"] = True
 
     btc = loaded.get("btc_spot_position")
@@ -250,6 +265,75 @@ def _forward_operational_fields(hypothesis_id: str) -> dict[str, Any]:
     return out
 
 
+def _paper_account_book_fields(account_book: Any) -> dict[str, Any]:
+    if not isinstance(account_book, dict):
+        return {
+            "paper_account_book_present": False,
+            "paper_account_equity_usd": None,
+            "paper_buying_power_usd": None,
+            "paper_open_order_count": None,
+            "paper_position_count": None,
+            "paper_gross_exposure_usd": None,
+            "paper_account_book": None,
+        }
+    return {
+        "paper_account_book_present": account_book.get("source") == "alpaca_paper",
+        "paper_account_equity_usd": _float_or_none(account_book.get("equity")),
+        "paper_buying_power_usd": _float_or_none(account_book.get("buying_power")),
+        "paper_open_order_count": account_book.get("open_order_count"),
+        "paper_position_count": account_book.get("position_count"),
+        "paper_gross_exposure_usd": _float_or_none(account_book.get("gross_exposure_usd")),
+        "paper_account_book": {
+            "source": account_book.get("source"),
+            "synced_utc": account_book.get("synced_utc"),
+            "equity": _float_or_none(account_book.get("equity")),
+            "buying_power": _float_or_none(account_book.get("buying_power")),
+            "open_order_count": account_book.get("open_order_count"),
+            "position_count": account_book.get("position_count"),
+            "gross_exposure_usd": _float_or_none(account_book.get("gross_exposure_usd")),
+            "positions": account_book.get("positions"),
+            "open_orders": account_book.get("open_orders"),
+        },
+    }
+
+
+def _trade_gate_fields(hypothesis_id: str, gate: str, forward_ops: dict[str, Any]) -> dict[str, Any]:
+    if gate != "trade":
+        return {}
+    intent_path = repo_root() / "paper" / hypothesis_id / "intents" / "market-long-btcusd.json"
+    if not intent_path.is_file():
+        return {
+            "order_intent_present": False,
+            "order_intent_symbol": None,
+            "order_intent_side": None,
+            "order_intent_qty": None,
+        }
+    intent = load_json(intent_path)
+    if not isinstance(intent, dict):
+        return {"order_intent_present": False}
+    return {
+        "order_intent_present": True,
+        "order_intent_id": "market-long-btcusd",
+        "order_intent_symbol": intent.get("symbol"),
+        "order_intent_side": intent.get("side"),
+        "order_intent_qty": intent.get("qty"),
+    }
+
+
+def _account_book_fresh(age_hours: float | None, account_book: Any) -> bool:
+    if age_hours is None or age_hours > FORWARD_STALE_STATUS_HOURS:
+        return False
+    if not isinstance(account_book, dict):
+        return False
+    if account_book.get("source") != "alpaca_paper":
+        return False
+    if _float_or_none(account_book.get("equity")) is None:
+        return False
+    if _float_or_none(account_book.get("buying_power")) is None:
+        return False
+    return True
+
+
 def _within_risk_bands_from_status(status: dict[str, Any]) -> bool:
     limits_path = repo_root() / "risk_limits.json"
     if not limits_path.is_file():
@@ -258,11 +342,28 @@ def _within_risk_bands_from_status(status: dict[str, Any]) -> bool:
     if not isinstance(limits, dict):
         return False
 
-    equity = _float_or_none(status.get("account_equity"))
+    book = status.get("account_book")
+    if isinstance(book, dict) and book.get("source") == "alpaca_paper":
+        equity = _float_or_none(book.get("equity"))
+        last_equity = _float_or_none(book.get("last_equity"))
+        buying_power = _float_or_none(book.get("buying_power"))
+        gross_exposure = _float_or_none(book.get("gross_exposure_usd")) or 0.0
+    else:
+        equity = _float_or_none(status.get("account_equity"))
+        last_equity = _float_or_none(status.get("last_equity"))
+        buying_power = _float_or_none(status.get("buying_power"))
+        gross_exposure = 0.0
+        btc = status.get("btc_spot_position")
+        if isinstance(btc, dict):
+            mv = _float_or_none(btc.get("market_value"))
+            if mv is not None:
+                gross_exposure = abs(mv)
+
     if equity is None or equity <= 0:
         return False
+    if buying_power is None or buying_power <= 0:
+        return False
 
-    last_equity = _float_or_none(status.get("last_equity"))
     max_daily_loss = _float_or_none(limits.get("max_daily_loss_usd"))
     if last_equity is not None and max_daily_loss is not None and last_equity > equity:
         daily_loss = last_equity - equity
@@ -273,8 +374,12 @@ def _within_risk_bands_from_status(status: dict[str, Any]) -> bool:
     btc = status.get("btc_spot_position")
     if isinstance(btc, dict) and max_notional is not None:
         market_value = _float_or_none(btc.get("market_value"))
-        if market_value is not None and market_value > max_notional:
+        if market_value is not None and abs(market_value) > max_notional:
             return False
+
+    max_gross = _float_or_none(limits.get("max_gross_exposure_usd"))
+    if max_gross is not None and gross_exposure > max_gross:
+        return False
 
     return True
 

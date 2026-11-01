@@ -91,6 +91,19 @@ def fetch_paper_positions(**kwargs: Any) -> list[dict[str, Any]]:
     return []
 
 
+def fetch_paper_open_orders(**kwargs: Any) -> list[dict[str, Any]]:
+    """Open orders on the Alpaca paper account (paper-api only)."""
+    payload = alpaca_paper_request(
+        "GET",
+        "/v2/orders",
+        params={"status": "open"},
+        **kwargs,
+    )
+    if isinstance(payload, list):
+        return [order for order in payload if isinstance(order, dict)]
+    return []
+
+
 def fetch_paper_order(order_id: str, **kwargs: Any) -> dict[str, Any]:
     payload = alpaca_paper_request("GET", f"/v2/orders/{order_id}", **kwargs)
     if not isinstance(payload, dict):

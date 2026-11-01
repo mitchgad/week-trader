@@ -10,6 +10,7 @@ from week_trader.brokers.alpaca_paper import (
     AlpacaPaperError,
     fetch_crypto_4h_bar_closes,
     fetch_paper_account,
+    fetch_paper_open_orders,
     fetch_paper_order,
     fetch_paper_positions,
 )
@@ -27,6 +28,7 @@ FORWARD_STALE_STATUS_HOURS = 5.0
 
 FetchAccount = Callable[..., dict[str, Any]]
 FetchPositions = Callable[..., list[dict[str, Any]]]
+FetchOpenOrders = Callable[..., list[dict[str, Any]]]
 FetchOrder = Callable[..., dict[str, Any]]
 
 
@@ -130,6 +132,7 @@ def run_forward_monitor_tick(
     *,
     fetch_account: FetchAccount | None = None,
     fetch_positions: FetchPositions | None = None,
+    fetch_open_orders: FetchOpenOrders | None = None,
     fetch_order: FetchOrder | None = None,
     dry_run: bool = False,
 ) -> dict[str, Any]:
@@ -154,13 +157,23 @@ def run_forward_monitor_tick(
 
     get_account = fetch_account or fetch_paper_account
     get_positions = fetch_positions or fetch_paper_positions
+    get_open_orders = fetch_open_orders or fetch_paper_open_orders
     get_order = fetch_order or fetch_paper_order
 
     try:
         account = get_account()
         positions = get_positions()
+        open_orders = get_open_orders()
     except AlpacaPaperError as exc:
         raise PaperForwardError(str(exc)) from exc
+
+    synced_utc = _utc_now()
+    account_book = build_paper_account_book(
+        account,
+        positions,
+        open_orders,
+        synced_utc=synced_utc,
+    )
 
     fills_synced = _sync_pending_orders(hypothesis_id, get_order)
     pnl = _pnl_snapshot(account, positions)
@@ -176,11 +189,15 @@ def run_forward_monitor_tick(
 
     status = {
         "hypothesis_id": hypothesis_id,
-        "timestamp_utc": _utc_now(),
+        "timestamp_utc": synced_utc,
         "account_equity": pnl.get("equity"),
         "last_equity": pnl.get("last_equity"),
+        "cash": pnl.get("cash"),
+        "buying_power": pnl.get("buying_power"),
         "unrealized_pl": pnl.get("unrealized_pl"),
         "open_positions": len(positions),
+        "open_order_count": account_book["open_order_count"],
+        "account_book": account_book,
         "fills_synced_this_tick": len(fills_synced),
         "validation_mode": "forward_paper_only",
     }
@@ -199,6 +216,7 @@ def run_forward_monitor_with_alerts(
     dry_run: bool = False,
     fetch_account: FetchAccount | None = None,
     fetch_positions: FetchPositions | None = None,
+    fetch_open_orders: FetchOpenOrders | None = None,
     fetch_order: FetchOrder | None = None,
 ) -> dict[str, Any]:
     from week_trader.forward_anomalies import check_forward_anomalies
@@ -208,6 +226,7 @@ def run_forward_monitor_with_alerts(
         dry_run=dry_run,
         fetch_account=fetch_account,
         fetch_positions=fetch_positions,
+        fetch_open_orders=fetch_open_orders,
         fetch_order=fetch_order,
     )
     alerts = check_forward_anomalies(hypothesis_id)
@@ -252,6 +271,54 @@ def _sync_pending_orders(hypothesis_id: str, get_order: FetchOrder) -> list[dict
 
     pending_path.write_text(json.dumps(remaining, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return fills
+
+
+def build_paper_account_book(
+    account: dict[str, Any],
+    positions: list[dict[str, Any]],
+    open_orders: list[dict[str, Any]],
+    *,
+    synced_utc: str,
+) -> dict[str, Any]:
+    """Structured Alpaca paper account book for forward status and Jev state."""
+    position_rows = [_summarize_book_position(p) for p in positions]
+    order_rows = [_summarize_book_order(o) for o in open_orders]
+    gross_exposure = sum(abs(row.get("market_value") or 0.0) for row in position_rows)
+    return {
+        "source": "alpaca_paper",
+        "synced_utc": synced_utc,
+        "equity": _float_or_none(account.get("equity")),
+        "cash": _float_or_none(account.get("cash")),
+        "buying_power": _float_or_none(account.get("buying_power")),
+        "last_equity": _float_or_none(account.get("last_equity")),
+        "position_count": len(position_rows),
+        "open_order_count": len(order_rows),
+        "gross_exposure_usd": gross_exposure,
+        "positions": position_rows,
+        "open_orders": order_rows,
+    }
+
+
+def _summarize_book_position(position: dict[str, Any]) -> dict[str, Any]:
+    qty = _float_or_none(position.get("qty")) or 0.0
+    return {
+        "symbol": position.get("symbol"),
+        "qty": qty,
+        "market_value": _float_or_none(position.get("market_value")),
+        "side": position.get("side"),
+        "open": qty != 0.0,
+    }
+
+
+def _summarize_book_order(order: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": order.get("id"),
+        "symbol": order.get("symbol"),
+        "side": order.get("side"),
+        "qty": order.get("qty"),
+        "status": order.get("status"),
+        "type": order.get("type"),
+    }
 
 
 def _pnl_snapshot(account: dict[str, Any], positions: list[dict[str, Any]]) -> dict[str, Any]:

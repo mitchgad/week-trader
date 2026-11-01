@@ -46,15 +46,24 @@ def test_build_jev_state_uses_forward_monitor_for_trade_fields(
         dest.write_text(src.read_text(encoding="utf-8"))
 
     def fake_account() -> dict[str, object]:
-        return {"equity": "100000", "cash": "50000", "last_equity": "100000"}
+        return {
+            "equity": "100000",
+            "cash": "50000",
+            "last_equity": "100000",
+            "buying_power": "50000",
+        }
 
     def fake_positions() -> list[dict[str, object]]:
+        return []
+
+    def fake_open_orders() -> list[dict[str, object]]:
         return []
 
     run_forward_monitor_tick(
         hypothesis_id,
         fetch_account=fake_account,
         fetch_positions=fake_positions,
+        fetch_open_orders=fake_open_orders,
         fetch_order=lambda _oid: {"status": "canceled"},
     )
     append_forward_event(
@@ -68,6 +77,8 @@ def test_build_jev_state_uses_forward_monitor_for_trade_fields(
     assert fields["forward_monitor_present"] is True
     assert fields["data_fresh"] is True
     assert fields["within_risk_bands"] is True
+    assert fields["paper_account_book_present"] is True
+    assert fields["paper_buying_power_usd"] == 50000.0
     assert fields["last_signal_side"] == "flat"
     assert fields["btc_spot_open"] is False
 
