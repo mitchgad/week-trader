@@ -30,6 +30,15 @@ def test_evaluate_tsmom_4h_flat_when_formation_non_positive() -> None:
     assert signal["side"] == "flat"
 
 
+def test_evaluate_tsmom_1d_long_when_formation_positive() -> None:
+    from week_trader.paper_forward import evaluate_tsmom_1d_signal
+
+    closes = [float(100 + i) for i in range(128)]
+    signal = evaluate_tsmom_1d_signal(closes, hypothesis_id="spy-equity-tsmom-1d")
+    assert signal["side"] == "long"
+    assert signal["formation_bars"] == 126
+
+
 def test_forward_monitor_dry_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("week_trader.paper_forward.repo_root", lambda: tmp_path)
     result = run_forward_monitor_tick("_template", dry_run=True)
