@@ -3,9 +3,15 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from week_trader.brokers.alpaca_paper import AlpacaPaperError, submit_alpaca_paper_order
+from week_trader.paper_account_guards import (
+    PaperAccountGuardError,
+    assert_account_halt_absent,
+    enforce_shared_account_guards,
+    record_fill_tag_submission,
+)
 from week_trader.paper_forward import append_forward_event, register_pending_order
 from week_trader.gate_log import verify_gate_log_file
 from week_trader.manifest import ManifestError, resolve_manifest_for_hypothesis, load_data_manifest
@@ -13,11 +19,22 @@ from week_trader.prereg import load_preregistration
 from week_trader.util import load_json, repo_root, sha256_json
 
 
+FetchPositions = Callable[..., list[dict[str, Any]]]
+FetchOpenOrders = Callable[..., list[dict[str, Any]]]
+
+
 class PaperOrderError(Exception):
     pass
 
 
-def paper_order(order_intent_id: str, gate_log_path: Path, *, dry_run: bool = False) -> dict[str, Any]:
+def paper_order(
+    order_intent_id: str,
+    gate_log_path: Path,
+    *,
+    dry_run: bool = False,
+    fetch_positions: FetchPositions | None = None,
+    fetch_open_orders: FetchOpenOrders | None = None,
+) -> dict[str, Any]:
     """Validate gate + risk + HALT before any Alpaca paper broker call."""
     root = repo_root()
     ok, reason = verify_gate_log_file(gate_log_path)
@@ -47,6 +64,11 @@ def paper_order(order_intent_id: str, gate_log_path: Path, *, dry_run: bool = Fa
     if halt_path.exists():
         raise PaperOrderError("HALT present — zero orders")
 
+    try:
+        assert_account_halt_absent()
+    except PaperAccountGuardError as exc:
+        raise PaperOrderError(str(exc)) from exc
+
     limits_path = root / "risk_limits.json"
     limits = load_json(limits_path)
     _enforce_risk_limits(limits, hypothesis_id)
@@ -61,12 +83,27 @@ def paper_order(order_intent_id: str, gate_log_path: Path, *, dry_run: bool = Fa
     if paper_venue != "alpaca_paper":
         raise PaperOrderError(f"unsupported paper_venue {paper_venue!r}")
 
+    try:
+        guard_meta = enforce_shared_account_guards(
+            hypothesis_id,
+            intent,
+            order_intent_id,
+            fetch_positions=fetch_positions,
+            fetch_open_orders=fetch_open_orders,
+        )
+    except PaperAccountGuardError as exc:
+        raise PaperOrderError(str(exc)) from exc
+    intent = {**intent, "client_order_id": guard_meta["client_order_id"]}
+
     result: dict[str, Any] = {
         "order_intent_id": order_intent_id,
         "hypothesis_id": hypothesis_id,
         "gate_log": str(gate_log_path.relative_to(root)),
         "broker_calls": 0,
         "status": "validated_dry_run" if dry_run else "pending_paper_submit",
+        "fill_tag": guard_meta["fill_tag"],
+        "client_order_id": guard_meta["client_order_id"],
+        "projected_notional_usd": guard_meta["projected_notional_usd"],
     }
 
     if dry_run:
@@ -86,10 +123,24 @@ def paper_order(order_intent_id: str, gate_log_path: Path, *, dry_run: bool = Fa
         }
         order_id = broker_resp.get("id")
         if isinstance(order_id, str):
+            record_fill_tag_submission(
+                hypothesis_id,
+                client_order_id=str(guard_meta["client_order_id"]),
+                fill_tag=str(guard_meta["fill_tag"]),
+                symbol=str(intent.get("symbol", "")),
+                side=str(intent.get("side", "")),
+                qty=str(intent.get("qty", "")),
+                order_intent_id=order_intent_id,
+            )
             register_pending_order(
                 hypothesis_id,
                 order_id,
-                {"order_intent_id": order_intent_id, "gate_log": str(gate_log_path.relative_to(root))},
+                {
+                    "order_intent_id": order_intent_id,
+                    "gate_log": str(gate_log_path.relative_to(root)),
+                    "fill_tag": guard_meta["fill_tag"],
+                    "client_order_id": guard_meta["client_order_id"],
+                },
             )
             append_forward_event(
                 hypothesis_id,

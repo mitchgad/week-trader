@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "account_halt_file": "paper/_shared/ACCOUNT_HALT",
+  "symbol_owners": {
+    "BTCUSD": "btc-spot-tsmom-4h",
+    "BTC/USD": "btc-spot-tsmom-4h",
+    "XLCIUSD": "_template",
+    "XLCI/USD": "_template"
+  },
+  "strategy_slices": {
+    "btc-spot-tsmom-4h": {
+      "max_notional_usd": 5000,
+      "fill_tag": "wt-btc-spot-tsmom-4h"
+    },
+    "_template": {
+      "max_notional_usd": 5000,
+      "fill_tag": "wt-_template"
+    }
+  },
+  "notes": "Enforced in paper-order before Alpaca paper-api calls. Account halt blocks all strategies."
+}
