@@ -1,0 +1,43 @@
+{
+  "freeze_manifest_hash": "81151bf9a6df2167cefe52d6b53ec42cc894b906e9221da5e2580d196aa58e16",
+  "gate": "trade",
+  "hypothesis_id": "btc-spot-tsmom-4h",
+  "log_signature": "91abbcdf93ce80b1031e147320ee7c23c5a4d9a2fd519af260163e2780973636",
+  "model_id": "jev-1.14.0",
+  "pass": false,
+  "request_hash": "267162332eaf6a4e9f244caef033dfefb995cb61529191598c6c1221bf59eabc",
+  "response": {
+    "answers": {
+      "operational_ok": {
+        "choice": "block",
+        "confidence": 0.92,
+        "probabilities": {
+          "block": 0.96,
+          "proceed": 0.04
+        },
+        "type": "choice"
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 1202,
+      "output_tokens": 35
+    }
+  },
+  "response_body_hash": "c3429f2d9f78372f8c1dc0274a7865e3553d7729e8ede08c4dfaab7b39147eb0",
+  "state_hash": "c99221524f8fa65889c585b66a707371e81651a65bef19eb7f1a8aa7b726d6d2",
+  "threshold_compare": {
+    "comparisons": [
+      {
+        "min_required": 0.7,
+        "pass": false,
+        "probability": 0.04,
+        "question_id": "operational_ok",
+        "type": "choice"
+      }
+    ],
+    "gate": "trade",
+    "pass": false
+  },
+  "timestamp_utc": "2026-11-01T00:16:27Z"
+}

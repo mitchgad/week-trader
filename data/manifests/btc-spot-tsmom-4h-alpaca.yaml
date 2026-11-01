@@ -24,6 +24,10 @@ venue_contract:
   notes: >
     Alpaca paper simulates US equities and crypto spot only — not BTC perp funding,
     ADL, cross-margin, or mark-price liquidation. This manifest is BTC spot only.
+  promotion_operational_proof: alpaca_paper_crypto_spot_forward_only
+  forbidden_promotion_evidence:
+    - crypto_perp_funding_pnl
+    - binance_futures_testnet
 
 costs:
   fee_bps_per_side: 10

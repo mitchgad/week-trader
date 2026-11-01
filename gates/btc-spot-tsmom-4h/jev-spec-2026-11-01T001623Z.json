@@ -1,0 +1,49 @@
+{
+  "freeze_manifest_hash": "81151bf9a6df2167cefe52d6b53ec42cc894b906e9221da5e2580d196aa58e16",
+  "gate": "spec",
+  "hypothesis_id": "btc-spot-tsmom-4h",
+  "log_signature": "fea49b1bed26c1abfac8a1d4c9b01a7f5ccaf002b11944ce58bc6ea13b257423",
+  "model_id": "jev-1.14.0",
+  "pass": true,
+  "request_hash": "b0e3f3c6d3184d327d4d61c00dda8c490ebb5c4aae059b6c773bf17d9f6d2d98",
+  "response": {
+    "answers": {
+      "spec_falsifiable": {
+        "noul": 0.79,
+        "type": "noul"
+      },
+      "spot_not_perp": {
+        "noul": 0.88,
+        "type": "noul"
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 1201,
+      "output_tokens": 43
+    }
+  },
+  "response_body_hash": "6c15b2c23335b1ae92f803f48bd9dad4e057a59d453cd51537bcff5e7e181c58",
+  "state_hash": "65ccfe7c08ff445573847f1806cd846598cd1083a72b9f401ea254e3ad1bd7d5",
+  "threshold_compare": {
+    "comparisons": [
+      {
+        "min_required": 0.65,
+        "pass": true,
+        "probability": 0.79,
+        "question_id": "spec_falsifiable",
+        "type": "noul"
+      },
+      {
+        "min_required": 0.65,
+        "pass": true,
+        "probability": 0.88,
+        "question_id": "spot_not_perp",
+        "type": "noul"
+      }
+    ],
+    "gate": "spec",
+    "pass": true
+  },
+  "timestamp_utc": "2026-11-01T00:16:23Z"
+}

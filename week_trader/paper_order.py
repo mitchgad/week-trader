@@ -8,6 +8,7 @@ from typing import Any
 from week_trader.brokers.alpaca_paper import AlpacaPaperError, submit_alpaca_paper_order
 from week_trader.paper_forward import append_forward_event, register_pending_order
 from week_trader.gate_log import verify_gate_log_file
+from week_trader.manifest import ManifestError, resolve_manifest_for_hypothesis, load_data_manifest
 from week_trader.prereg import load_preregistration
 from week_trader.util import load_json, repo_root, sha256_json
 
@@ -55,6 +56,7 @@ def paper_order(order_intent_id: str, gate_log_path: Path, *, dry_run: bool = Fa
         raise PaperOrderError("Alpaca paper invalid for crypto_perp venue_contract")
 
     intent = _load_order_intent(hypothesis_id, order_intent_id)
+    _validate_spot_intent(hypothesis_id, intent, prereg)
     paper_venue = venue.get("paper_venue")
     if paper_venue != "alpaca_paper":
         raise PaperOrderError(f"unsupported paper_venue {paper_venue!r}")
@@ -118,6 +120,41 @@ def _load_order_intent(hypothesis_id: str, order_intent_id: str) -> dict[str, An
     if not isinstance(data, dict):
         raise PaperOrderError("order intent must be a JSON object")
     return data
+
+
+def _validate_spot_intent(hypothesis_id: str, intent: dict[str, Any], prereg: dict[str, Any]) -> None:
+    venue = prereg.get("venue_contract", {})
+    if not isinstance(venue, dict):
+        raise PaperOrderError("venue_contract missing")
+    if venue.get("instrument_class") != "crypto_spot":
+        raise PaperOrderError("order intents require crypto_spot venue_contract")
+    symbol = intent.get("symbol")
+    if not isinstance(symbol, str) or not symbol.strip():
+        raise PaperOrderError("order intent symbol required")
+    normalized = symbol.strip().upper()
+    perp_markers = ("PERP", "USDTM", "USDTP", "SWAP", "-P")
+    if any(marker in normalized for marker in perp_markers):
+        raise PaperOrderError("perp-like symbol forbidden on Alpaca spot paper rail")
+    try:
+        manifest_path = resolve_manifest_for_hypothesis(hypothesis_id, prereg)
+        manifest = load_data_manifest(manifest_path)
+    except ManifestError as exc:
+        raise PaperOrderError(str(exc)) from exc
+    if manifest.get("instrument_class") != "crypto_spot":
+        raise PaperOrderError("manifest instrument_class must be crypto_spot")
+    universe = manifest.get("universe")
+    if not isinstance(universe, dict):
+        raise PaperOrderError("manifest universe missing")
+    symbols = universe.get("symbols")
+    if not isinstance(symbols, list) or not symbols:
+        raise PaperOrderError("manifest universe.symbols missing")
+    allowed = {_manifest_symbol_to_alpaca(s) for s in symbols if isinstance(s, str)}
+    if normalized not in allowed:
+        raise PaperOrderError(f"symbol {normalized!r} not in manifest spot universe")
+
+
+def _manifest_symbol_to_alpaca(manifest_symbol: str) -> str:
+    return manifest_symbol.replace("/", "").upper()
 
 
 def _enforce_risk_limits(limits: dict[str, Any], hypothesis_id: str) -> None:

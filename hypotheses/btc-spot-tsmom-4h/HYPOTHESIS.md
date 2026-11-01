@@ -35,12 +35,25 @@ Motivation (not proof): Liu & Tsyvinski document **time-series momentum** in cry
 | `execution_venue` | alpaca_crypto |
 | `paper_venue` | alpaca_paper (equities + **crypto spot sim only**) |
 | `instrument_class` | crypto_spot |
+| `allowed_symbols` | `BTC/USD` spot only (manifest universe) |
 
-Alpaca paper **does not** simulate BTC perp funding, ADL, cross-margin, or mark-price liquidation. This hypothesis **must not** be promoted using perp or testnet P&amp;L as proof.
+Alpaca paper **does not** simulate BTC perp funding, ADL, cross-margin, or mark-price liquidation ([grokbot-army.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/grokbot-army.md) §4.1; [Alpaca paper docs](https://docs.alpaca.markets/docs/paper-trading)). **Carry / funding** economics are a **different strategy class** from spot TSMOM ([research-gap-fill.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/research-gap-fill.md) §1 — BIS crypto carry vs daily momentum evidence).
+
+## Validation and promotion proof
+
+Operational proof for this hypothesis is **only** real-time **Alpaca paper crypto spot** forward tracking — not backtest replay, not Jesse parity runs, not external perp sims.
+
+| Allowed proof | Forbidden as proof for this ID |
+|---------------|--------------------------------|
+| Alpaca paper **spot** fills and equity curve in `paper/btc-spot-tsmom-4h/forward/` + `journal/` | **Perp funding** accrual P&amp;L, Binance Futures testnet/mock, or any `crypto_perp` venue |
+| `paper-forward` 4h signals on manifest `BTC/USD` with `closes_source=alpaca_live_4h` | Basis/carry or funding-harvest metrics (gap-fill §1; He et al. perp–spot frictions) |
+| Signed Jev **trade** gate + `paper-order` intents bound to `BTCUSD` spot | Promoting from **engine-parity backtest** alone without paper forward bars |
+
+Code enforcement (not narrative): manifest `instrument_class: crypto_spot` with `costs.funding_series_id: null`; `week_trader.manifest.validate_manifest_costs` rejects `crypto_perp` on `alpaca_paper`; `paper-order` rejects non-spot symbols and perp venue contracts. Intake memo: [docs/intake/btc-spot-tsmom-4h-venue-proof.md](../../docs/intake/btc-spot-tsmom-4h-venue-proof.md).
 
 ## Costs
 
-Bound manifest `data/manifests/btc-spot-tsmom-4h-alpaca.yaml` (`costs.fee_bps_per_side`, `costs.slippage_bps_per_side`). Backtest and promotion require **engine parity** per preregistration before metrics count.
+Bound manifest `data/manifests/btc-spot-tsmom-4h-alpaca.yaml` (`costs.fee_bps_per_side`, `costs.slippage_bps_per_side`; **`funding_series_id` must stay null** for spot). **Gate 2 backtest** (engine parity + signed backtest gate) is for **kill/advance-to-paper diagnostics only** — backtest metrics **do not** satisfy Gate 3 operational proof. **Gate 3 proof** is Alpaca paper spot forward only (`proof_contract` in preregistration).
 
 ## Kill conditions (algorithms A.6 — pre-registered)
 
@@ -62,5 +75,6 @@ These outcomes **falsify** treating 4h BTC spot TSMOM as supported for this spec
 | Signal **inverts** (long formation predicts **lower** next-period return) with pre-registered statistical threshold on OOS folds | Contradicts TSMOM direction; kill — not MR rescue. |
 | Performance exists **only** in one OOS month and **fails** adjacent folds | Unstable / overfit; contradicts portable daily literature adaptation. |
 | Liu-style **daily** momentum ranks **disagree** with 4h signal on held-out calendar (pre-registered correlation / sign test fails) | Bar-size portability disconfirmed (daily evidence does not extend to 4h). |
+| Any promotion or “paper pass” argument cites **perp funding P&amp;L**, **Binance testnet perp**, or **carry/basis** results instead of Alpaca **spot** forward logs | **Venue-class violation** — falsifies the frozen `venue_contract`; kill immediately ([algorithms-and-paper-trade.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/algorithms-and-paper-trade.md) Part B §B.1). |
 
-**Explicitly out of scope:** Mean-reversion z-score rules (gap-fill §2: BTC spot MR is **contested** — Turatti explosive / Corbet asymmetric dynamics); perp funding or basis trades; minute/session scalping.
+**Explicitly out of scope:** Mean-reversion z-score rules (gap-fill §2: BTC spot MR is **contested** — Turatti explosive / Corbet asymmetric dynamics); **perp funding, basis, or carry trades as evidence or as substitute instruments**; minute/session scalping.

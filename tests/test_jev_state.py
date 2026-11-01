@@ -21,6 +21,9 @@ def test_build_jev_state_includes_spec_fields_for_btc() -> None:
     assert fields["disconfirmers_documented"] is True
     assert fields["manifest_cost_block_present"] is True
     assert fields["engine_parity_required"] is True
+    assert fields["proof_contract_present"] is True
+    assert fields["forbidden_perp_funding_proof_in_prereg"] is True
+    assert fields["promotion_proof_alpaca_spot_forward_only"] is True
 
 
 def test_build_jev_state_uses_forward_monitor_for_trade_fields(
