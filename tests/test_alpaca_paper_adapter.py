@@ -15,17 +15,22 @@ def _write_template_intent(intent_id: str) -> None:
     path.write_text(
         json.dumps(
             {
-                "symbol": "BTCUSD",
+                "symbol": "XLCIUSD",
                 "side": "buy",
                 "qty": "0.001",
                 "type": "market",
                 "time_in_force": "gtc",
+                "reference_price_usd": 100.0,
             },
             sort_keys=True,
         )
         + "\n",
         encoding="utf-8",
     )
+
+
+def _mock_guard_fetchers() -> tuple[object, object]:
+    return (lambda: [], lambda: [])
 
 
 def _trade_gate_log(monkeypatch: pytest.MonkeyPatch) -> Path:
@@ -75,7 +80,13 @@ def test_paper_order_dry_run_zero_broker_calls(monkeypatch: pytest.MonkeyPatch) 
     log = _trade_gate_log(monkeypatch)
     from week_trader.paper_order import paper_order
 
-    result = paper_order("dry-run-intent", log, dry_run=True)
+    result = paper_order(
+        "dry-run-intent",
+        log,
+        dry_run=True,
+        fetch_positions=_mock_guard_fetchers()[0],
+        fetch_open_orders=_mock_guard_fetchers()[1],
+    )
     assert result["broker_calls"] == 0
     assert result.get("dry_run") is True
 
@@ -91,11 +102,11 @@ def test_paper_order_submits_via_paper_api(monkeypatch: pytest.MonkeyPatch) -> N
 
     class FakeResponse:
         status_code = 200
-        content = b'{"id":"ord-123","status":"accepted","symbol":"BTCUSD"}'
+        content = b'{"id":"ord-123","status":"accepted","symbol":"XLCIUSD"}'
 
         @staticmethod
         def json() -> dict[str, str]:
-            return {"id": "ord-123", "status": "accepted", "symbol": "BTCUSD"}
+            return {"id": "ord-123", "status": "accepted", "symbol": "XLCIUSD"}
 
     def fake_post(url: str, **kwargs: object) -> FakeResponse:
         captured["url"] = url
@@ -109,13 +120,19 @@ def test_paper_order_submits_via_paper_api(monkeypatch: pytest.MonkeyPatch) -> N
 
     from week_trader.paper_order import paper_order
 
-    result = paper_order("submit-intent", log, dry_run=False)
+    result = paper_order(
+        "submit-intent",
+        log,
+        dry_run=False,
+        fetch_positions=_mock_guard_fetchers()[0],
+        fetch_open_orders=_mock_guard_fetchers()[1],
+    )
     assert result["broker_calls"] == 1
     assert result["alpaca_order_id"] == "ord-123"
     assert captured["url"] == "https://paper-api.alpaca.markets/v2/orders"
     body = captured["json"]
     assert isinstance(body, dict)
-    assert body["symbol"] == "BTCUSD"
+    assert body["symbol"] == "XLCIUSD"
 
 
 def test_paper_order_fail_closed_missing_keys_after_validation(
@@ -128,4 +145,10 @@ def test_paper_order_fail_closed_missing_keys_after_validation(
     from week_trader.paper_order import PaperOrderError, paper_order
 
     with pytest.raises(PaperOrderError, match="ALPACA_PAPER_KEY"):
-        paper_order("no-keys-intent", log, dry_run=False)
+        paper_order(
+            "no-keys-intent",
+            log,
+            dry_run=False,
+            fetch_positions=_mock_guard_fetchers()[0],
+            fetch_open_orders=_mock_guard_fetchers()[1],
+        )

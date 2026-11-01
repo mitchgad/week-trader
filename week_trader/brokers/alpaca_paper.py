@@ -92,6 +92,18 @@ def fetch_paper_positions(**kwargs: Any) -> list[dict[str, Any]]:
 
 
 def fetch_paper_open_orders(**kwargs: Any) -> list[dict[str, Any]]:
+    payload = alpaca_paper_request(
+        "GET",
+        "/v2/orders",
+        params={"status": "open", "limit": "500"},
+        **kwargs,
+    )
+    if isinstance(payload, list):
+        return [item for item in payload if isinstance(item, dict)]
+    return []
+
+
+def fetch_paper_open_orders(**kwargs: Any) -> list[dict[str, Any]]:
     """Open orders on the Alpaca paper account (paper-api only)."""
     payload = alpaca_paper_request(
         "GET",
@@ -218,13 +230,17 @@ def build_alpaca_order_body(intent: dict[str, Any]) -> dict[str, str]:
     side = str(intent["side"]).lower()
     if side not in {"buy", "sell"}:
         raise AlpacaPaperError(f"invalid side {side!r}")
-    return {
+    body = {
         "symbol": str(intent["symbol"]),
         "qty": str(intent["qty"]),
         "side": side,
         "type": str(intent.get("type", "market")),
         "time_in_force": str(intent.get("time_in_force", "gtc")),
     }
+    client_order_id = intent.get("client_order_id")
+    if isinstance(client_order_id, str) and client_order_id.strip():
+        body["client_order_id"] = client_order_id.strip()[:48]
+    return body
 
 
 def submit_alpaca_paper_order(

@@ -1,1 +1,1 @@
-{"qty": "0.001", "side": "buy", "symbol": "BTCUSD", "time_in_force": "gtc", "type": "market"}
+{"qty": "0.001", "reference_price_usd": 100.0, "side": "buy", "symbol": "XLCIUSD", "time_in_force": "gtc", "type": "market"}

@@ -6,6 +6,7 @@ universe:
   point_in_time: true
   symbols:
     - BTC/USD
+    - XLCI/USD
   liquidity_filter:
     min_adv_usd_30d: 1000000
     lookback_days: 30

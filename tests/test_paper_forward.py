@@ -121,6 +121,7 @@ def test_paper_order_registers_forward_tracking(
         "week_trader.manifest.repo_root",
         "week_trader.paper_order.repo_root",
         "week_trader.paper_forward.repo_root",
+        "week_trader.paper_account_guards.repo_root",
     ):
         if target.endswith("hypothesis_dir"):
             monkeypatch.setattr(
@@ -146,10 +147,21 @@ def test_paper_order_registers_forward_tracking(
     (tmp_path / "risk_limits.json").write_text(
         (repo / "risk_limits.json").read_text(encoding="utf-8")
     )
+    (tmp_path / "paper_account_guards.json").write_text(
+        (repo / "paper_account_guards.json").read_text(encoding="utf-8")
+    )
     intents = tmp_path / "paper" / "_template" / "intents"
     intents.mkdir(parents=True, exist_ok=True)
     intents.joinpath("fwd-intent.json").write_text(
-        json.dumps({"symbol": "BTCUSD", "side": "buy", "qty": "0.001"}) + "\n"
+        json.dumps(
+            {
+                "symbol": "XLCIUSD",
+                "side": "buy",
+                "qty": "0.001",
+                "reference_price_usd": 100.0,
+            }
+        )
+        + "\n"
     )
 
     from week_trader.gate_log import write_gate_log
@@ -173,11 +185,11 @@ def test_paper_order_registers_forward_tracking(
 
     class FakeResponse:
         status_code = 200
-        content = b'{"id":"ord-forward-1","status":"accepted","symbol":"BTCUSD"}'
+        content = b'{"id":"ord-forward-1","status":"accepted","symbol":"XLCIUSD"}'
 
         @staticmethod
         def json() -> dict[str, str]:
-            return {"id": "ord-forward-1", "status": "accepted", "symbol": "BTCUSD"}
+            return {"id": "ord-forward-1", "status": "accepted", "symbol": "XLCIUSD"}
 
     def fake_post(*_args: object, **_kwargs: object) -> FakeResponse:
         return FakeResponse()
@@ -188,7 +200,13 @@ def test_paper_order_registers_forward_tracking(
 
     from week_trader.paper_order import paper_order
 
-    paper_order("fwd-intent", log, dry_run=False)
+    paper_order(
+        "fwd-intent",
+        log,
+        dry_run=False,
+        fetch_positions=lambda: [],
+        fetch_open_orders=lambda: [],
+    )
     pending = json.loads(
         (tmp_path / "paper" / "_template" / "forward" / "pending_orders.json").read_text()
     )
