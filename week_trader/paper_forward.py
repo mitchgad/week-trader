@@ -73,10 +73,29 @@ def register_pending_order(hypothesis_id: str, order_id: str, meta: dict[str, An
     pending_path.write_text(json.dumps(pending, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def record_signal(hypothesis_id: str, signal: dict[str, Any]) -> dict[str, Any]:
-    """Record a strategy signal for forward validation (does not submit orders)."""
+def record_signal(
+    hypothesis_id: str,
+    signal: dict[str, Any],
+    *,
+    submit_order: bool = False,
+    dry_run: bool = False,
+    **order_kwargs: Any,
+) -> dict[str, Any]:
+    """Record a strategy signal; optionally submit via trade gate + paper-order."""
     append_forward_event(hypothesis_id, "signal", signal)
-    return {"recorded": True, "signal": signal}
+    recorded = {"recorded": True, "signal": signal}
+    if not submit_order:
+        return recorded
+    from week_trader.paper_forward_order import attach_order_submission
+
+    return attach_order_submission(
+        hypothesis_id,
+        signal,
+        recorded,
+        submit_order=True,
+        dry_run=dry_run,
+        **order_kwargs,
+    )
 
 
 def manifest_trading_symbol(hypothesis_id: str) -> str:
@@ -174,7 +193,13 @@ def fetch_live_equity_daily_closes(hypothesis_id: str, *, min_bars: int = 130) -
         raise PaperForwardError(str(exc)) from exc
 
 
-def record_signal_from_live_bars(hypothesis_id: str) -> dict[str, Any]:
+def record_signal_from_live_bars(
+    hypothesis_id: str,
+    *,
+    submit_order: bool = False,
+    dry_run: bool = False,
+    **order_kwargs: Any,
+) -> dict[str, Any]:
     prereg = load_preregistration(hypothesis_id)
     manifest_path = resolve_manifest_for_hypothesis(hypothesis_id, prereg)
     manifest = load_data_manifest(manifest_path)

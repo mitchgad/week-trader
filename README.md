@@ -13,7 +13,7 @@ Project specs live in the Week trader Project store (`docs/week-trader-plan.md`,
 | Jev gates | **Blocked in CI/agents** until `GATE_LOG_HMAC_SECRET` is injected (TypeSafe calls need `TYPESAFE_API_KEY` + HMAC to sign logs). No hand-written `gates/` JSON. |
 | Paper orders | `paper-order` validates trade gate + HALT + **shared account guards** (`paper_account_guards.json`); Alpaca **paper-api only** (`ALPACA_PAPER_KEY` / `ALPACA_PAPER_SECRET`) |
 | Strategy validation | **Forward paper only** — `paper-forward` records signals, fills, and P&amp;L from Alpaca paper; backtests are not proof of edge |
-| Paper forward loop | `paper-forward ID=<hypothesis>` monitors account/orders; `ACTION=signal CLOSES=live` fetches Alpaca 4h bars (observation only); `CHECK_ALERTS=1` writes `alerts.json` |
+| Paper forward loop | `paper-forward ID=<hypothesis>` monitors account/orders; `ACTION=signal CLOSES=live` records the signal then, when side matches a paper intent, runs **Jev trade gate** + **`paper-order`** (guards + paper-api only); `CHECK_ALERTS=1` writes `alerts.json` |
 | Scheduled forward | GitHub Actions `paper-forward-schedule` (4h signal + hourly monitor; paper secrets only) |
 
 ### How to run (local)
