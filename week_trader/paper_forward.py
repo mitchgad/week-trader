@@ -102,6 +102,33 @@ def manifest_bar_interval(hypothesis_id: str) -> str:
     return interval.strip()
 
 
+def manifest_universe_symbols(hypothesis_id: str) -> list[str]:
+    prereg = load_preregistration(hypothesis_id)
+    manifest_path = resolve_manifest_for_hypothesis(hypothesis_id, prereg)
+    manifest = load_data_manifest(manifest_path)
+    universe = manifest.get("universe")
+    if not isinstance(universe, dict):
+        raise PaperForwardError("manifest universe missing")
+    symbols = universe.get("symbols")
+    if not isinstance(symbols, list) or len(symbols) < 1:
+        raise PaperForwardError("manifest universe.symbols missing")
+    out = [str(s).strip().upper() for s in symbols if isinstance(s, str) and s.strip()]
+    if not out:
+        raise PaperForwardError("manifest universe.symbols invalid")
+    return out
+
+
+def fetch_live_equity_daily_closes_map(hypothesis_id: str) -> dict[str, list[float]]:
+    symbols = manifest_universe_symbols(hypothesis_id)
+    closes_map: dict[str, list[float]] = {}
+    try:
+        for symbol in symbols:
+            closes_map[symbol] = fetch_equity_daily_bar_closes(symbol, min_bars=30)
+    except AlpacaPaperError as exc:
+        raise PaperForwardError(str(exc)) from exc
+    return closes_map
+
+
 def manifest_crypto_symbol(hypothesis_id: str) -> str:
     symbol = manifest_trading_symbol(hypothesis_id)
     if manifest_bar_interval(hypothesis_id) != "4h":
@@ -133,8 +160,15 @@ def record_signal_from_live_bars(hypothesis_id: str) -> dict[str, Any]:
     manifest = load_data_manifest(manifest_path)
     if hypothesis_id == "gld-negative-attention-1d":
         return record_gld_negative_attention_live_signal(hypothesis_id, manifest)
-    symbol = manifest_trading_symbol(hypothesis_id)
     interval = manifest_bar_interval(hypothesis_id)
+    if interval == "1Day" and hypothesis_id == "eem-xlf-csmom-1d":
+        closes_map = fetch_live_equity_daily_closes_map(hypothesis_id)
+        signal = evaluate_eem_xlf_csmom_1d_signal(closes_map, hypothesis_id=hypothesis_id)
+        signal["closes_source"] = "alpaca_live_1d"
+        signal["symbols"] = list(closes_map.keys())
+        signal["bar_count"] = min(len(v) for v in closes_map.values())
+        return record_signal(hypothesis_id, signal)
+    symbol = manifest_trading_symbol(hypothesis_id)
     if interval == "4h":
         closes = fetch_live_4h_closes(hypothesis_id)
         signal = evaluate_tsmom_4h_signal(closes, hypothesis_id=hypothesis_id)
@@ -232,6 +266,31 @@ def evaluate_dia_mean_reversion_1d_signal(closes: list[float], *, hypothesis_id:
         "formation_return": formation_return,
         "side": side,
         "last_close": end_close,
+    }
+
+
+def evaluate_eem_xlf_csmom_1d_signal(
+    closes_by_symbol: dict[str, list[float]], *, hypothesis_id: str
+) -> dict[str, Any]:
+    """Long-only cross-sectional momentum on two ETFs: long relative winner."""
+    formation_days = 21
+    returns: dict[str, float] = {}
+    for symbol, closes in closes_by_symbol.items():
+        if len(closes) < formation_days + 1:
+            raise PaperForwardError(f"need {formation_days + 1} closes for {symbol}")
+        start = closes[-(formation_days + 1)]
+        end = closes[-1]
+        if start <= 0:
+            raise PaperForwardError(f"invalid close for {symbol}")
+        returns[symbol.upper()] = end / start - 1.0
+    winner = max(returns, key=returns.get)
+    return {
+        "strategy": hypothesis_id,
+        "formation_days": formation_days,
+        "formation_returns": returns,
+        "side": "long",
+        "target_symbol": winner,
+        "last_closes": {sym: closes_by_symbol[sym][-1] for sym in closes_by_symbol},
     }
 
 

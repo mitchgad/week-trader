@@ -121,6 +121,9 @@ def _spec_fields(hypothesis_id: str, prereg: dict[str, Any]) -> dict[str, Any]:
         and manifest_instrument == "equity"
     )
     disconfirmers = _hypothesis_disconfirmers_ok(hypothesis_id)
+    long_only_loser = _hypothesis_long_only_loser_leg_documented(hypothesis_id)
+    long_only_csmom = _hypothesis_long_only_csmom_documented(hypothesis_id)
+    pairs_short = _hypothesis_pairs_short_leg_documented(hypothesis_id)
     proof = _proof_contract_fields(prereg, hypothesis_id)
     cost_ok = False
     manifest_path: Path | None = None
@@ -138,10 +141,14 @@ def _spec_fields(hypothesis_id: str, prereg: dict[str, Any]) -> dict[str, Any]:
         "venue_contract_spot_only": spot_only,
         "venue_contract_equity_paper_only": equity_paper_only,
         "disconfirmers_documented": disconfirmers,
+        "long_only_loser_leg_documented": long_only_loser,
+        "long_only_csmom_documented": long_only_csmom,
+        "pairs_short_leg_documented": pairs_short,
         "manifest_cost_block_present": cost_ok,
         "engine_parity_required": engine_parity,
         "manifest_single_spot_symbol_matches": manifest_symbol_matches and spot_only,
         "manifest_single_equity_symbol_matches": manifest_symbol_matches and equity_paper_only,
+        "manifest_symbols_match_venue": _manifest_symbols_match_prereg(prereg, manifest_path),
         "horizon_thinness_acknowledged": _hypothesis_horizon_thinness_acknowledged(hypothesis_id),
         "primary_citations_present": _hypothesis_primary_citations_present(hypothesis_id),
         **attention_fields,
@@ -295,6 +302,63 @@ def _hypothesis_disconfirmers_ok(hypothesis_id: str) -> bool:
         return True
     equity_markers = ("live alpaca", "api.alpaca.markets", "backtest as gate 3", "gate 3 proof")
     return any(marker in dis_section for marker in equity_markers)
+
+
+def _hypothesis_long_only_loser_leg_documented(hypothesis_id: str) -> bool:
+    if hypothesis_id != "dia-mean-reversion-1d":
+        return False
+    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
+    if not path.is_file():
+        return False
+    text = path.read_text(encoding="utf-8").lower()
+    if "long-only scope" not in text and "long-only loser" not in text:
+        return False
+    return "10.1016/j.jfineco.2012.11.005" in text or "israel" in text
+
+
+def _hypothesis_long_only_csmom_documented(hypothesis_id: str) -> bool:
+    if hypothesis_id != "eem-xlf-csmom-1d":
+        return False
+    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
+    if not path.is_file():
+        return False
+    text = path.read_text(encoding="utf-8").lower()
+    return "long only" in text and "10.1016/j.jfineco.2012.11.005" in text
+
+
+def _hypothesis_pairs_short_leg_documented(hypothesis_id: str) -> bool:
+    if hypothesis_id != "tlt-ief-pairs-1d":
+        return False
+    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
+    if not path.is_file():
+        return False
+    text = path.read_text(encoding="utf-8").lower()
+    return "short" in text and "tlt" in text and "ief" in text
+
+
+def _manifest_symbols_match_prereg(prereg: dict[str, Any], manifest_path: Path | None) -> bool:
+    venue = prereg.get("venue_contract")
+    if not isinstance(venue, dict):
+        return False
+    allowed = venue.get("allowed_symbols")
+    if not isinstance(allowed, list) or not allowed:
+        return False
+    if manifest_path is None or not manifest_path.is_file():
+        return False
+    manifest = load_data_manifest(manifest_path)
+    universe = manifest.get("universe")
+    if not isinstance(universe, dict):
+        return False
+    symbols = universe.get("symbols")
+    if not isinstance(symbols, list):
+        return False
+
+    def norm(symbol: object) -> str:
+        return str(symbol).upper().replace("/", "")
+
+    return sorted(norm(s) for s in symbols if isinstance(s, str)) == sorted(
+        norm(s) for s in allowed if isinstance(s, str)
+    )
 
 
 def _forward_operational_fields(hypothesis_id: str) -> dict[str, Any]:
