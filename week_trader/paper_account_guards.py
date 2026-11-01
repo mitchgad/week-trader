@@ -11,7 +11,6 @@ from week_trader.brokers.alpaca_paper import (
     fetch_paper_positions,
 )
 from week_trader.paper_forward import normalize_alpaca_crypto_symbol
-from week_trader.paper_guards_config import merged_guard_view
 from week_trader.util import load_json, repo_root
 
 FetchPositions = Callable[..., list[dict[str, Any]]]
@@ -26,6 +25,22 @@ def guards_config_path() -> Path:
     return repo_root() / "paper_account_guards.json"
 
 
+def paper_guard_overlays_dir() -> Path:
+    return repo_root() / "config" / "paper_guards"
+
+
+def _merge_guard_overlay(base: dict[str, Any], overlay: dict[str, Any]) -> None:
+    for key in ("symbol_owners", "strategy_slices"):
+        section = overlay.get(key)
+        if not isinstance(section, dict):
+            continue
+        target = base.setdefault(key, {})
+        if not isinstance(target, dict):
+            raise PaperAccountGuardError(f"guards config {key} must be an object")
+        for entry_key, entry_value in section.items():
+            target[entry_key] = entry_value
+
+
 def load_guards_config() -> dict[str, Any]:
     path = guards_config_path()
     if not path.is_file():
@@ -33,11 +48,21 @@ def load_guards_config() -> dict[str, Any]:
     data = load_json(path)
     if not isinstance(data, dict):
         raise PaperAccountGuardError("paper_account_guards.json must be an object")
+    overlay_dir = paper_guard_overlays_dir()
+    if overlay_dir.is_dir():
+        for overlay_path in sorted(overlay_dir.glob("*.json")):
+            overlay = load_json(overlay_path)
+            if not isinstance(overlay, dict):
+                raise PaperAccountGuardError(f"{overlay_path.name} must be a JSON object")
+            _merge_guard_overlay(data, overlay)
     return data
 
 
 def normalize_guard_symbol(symbol: str) -> str:
-    return normalize_alpaca_crypto_symbol(symbol.strip())
+    cleaned = symbol.strip().upper()
+    if "/" in cleaned:
+        return normalize_alpaca_crypto_symbol(cleaned)
+    return cleaned
 
 
 def shared_ledger_dir() -> Path:
@@ -109,8 +134,7 @@ def enforce_shared_account_guards(
     Shared Alpaca paper account guards (v1): account halt, symbol owner, capital slice,
     opposite-side open-order lock, fill tag for client_order_id.
     """
-    base_config = load_guards_config()
-    config = merged_guard_view(hypothesis_id, base_config)
+    config = load_guards_config()
     assert_account_halt_absent(config)
 
     symbol_raw = intent.get("symbol")

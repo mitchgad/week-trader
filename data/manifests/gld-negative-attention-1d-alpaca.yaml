@@ -12,7 +12,7 @@ universe:
 
 bars:
   timezone: America/New_York
-  interval: 1d
+  interval: 1Day
   signal_bar_close: true
   order_default: next_session_open
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from week_trader.attention.google_trends import TrendsDailyRow
-from week_trader.paper_guards_config import merged_guard_view
+from week_trader.paper_guards_config import load_hypothesis_guard_overlay
 from week_trader.strategies.gld_negative_attention_1d import evaluate_gld_negative_attention_1d
 
 
@@ -63,15 +63,8 @@ def test_evaluate_gld_negative_attention_low_ratio_long() -> None:
     assert signal["side"] == "long"
 
 
-def test_merged_guard_overlay_adds_gld_slice() -> None:
-    base = {
-        "symbol_owners": {"BTCUSD": "btc-spot-tsmom-4h"},
-        "strategy_slices": {"btc-spot-tsmom-4h": {"max_notional_usd": 5000, "fill_tag": "x"}},
-    }
-    merged = merged_guard_view(
-        "gld-negative-attention-1d",
-        base,
-    )
-    assert merged["symbol_owners"]["GLD"] == "gld-negative-attention-1d"
-    assert merged["strategy_slices"]["gld-negative-attention-1d"]["max_notional_usd"] == 5000
-    assert merged["strategy_slices"]["btc-spot-tsmom-4h"]["max_notional_usd"] == 5000
+def test_gld_guard_overlay_file_shape() -> None:
+    overlay = load_hypothesis_guard_overlay("gld-negative-attention-1d")
+    assert overlay is not None
+    assert overlay["symbol_owners"]["GLD"] == "gld-negative-attention-1d"
+    assert overlay["strategy_slices"]["gld-negative-attention-1d"]["max_notional_usd"] == 5000

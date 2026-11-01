@@ -227,11 +227,11 @@ def fetch_crypto_4h_bar_closes(
 def fetch_equity_daily_bar_closes(
     symbol: str,
     *,
-    min_bars: int = 2,
+    min_bars: int = 130,
     lookback_days: int = 400,
     http_get: HttpGet | None = None,
 ) -> list[float]:
-    """Completed 1Day equity bar closes from Alpaca market data."""
+    """Completed 1Day US equity bar closes from Alpaca market data."""
     if min_bars < 2:
         raise AlpacaPaperError("min_bars must be at least 2")
     normalized = symbol.strip().upper()
@@ -258,6 +258,8 @@ def fetch_equity_daily_bar_closes(
         raise AlpacaPaperError("Alpaca equity bars missing bars object — fail closed")
     series = bars_root.get(normalized)
     if not isinstance(series, list):
+        series = bars_root.get(symbol)
+    if not isinstance(series, list):
         raise AlpacaPaperError(f"Alpaca equity bars missing series for {normalized!r} — fail closed")
     closes: list[float] = []
     for bar in series:
@@ -272,7 +274,7 @@ def fetch_equity_daily_bar_closes(
             raise AlpacaPaperError("Alpaca equity bar close not numeric — fail closed") from exc
     if len(closes) < min_bars:
         raise AlpacaPaperError(
-            f"need at least {min_bars} daily closes for {normalized}; got {len(closes)} — fail closed"
+            f"need at least {min_bars} daily closes for signal; got {len(closes)} — fail closed"
         )
     return closes
 

@@ -9,7 +9,9 @@ v1 runs multiple hypotheses on **one** Alpaca paper account. `paper-order` enfor
 3. Symbol owner, capital slice, opposite open-order lock
 4. Alpaca submit with strategy **fill tag** as `client_order_id` prefix
 
-## Config (`paper_account_guards.json`)
+## Config (`paper_account_guards.json` + `config/paper_guards/*.json`)
+
+Base owners and slices live in `paper_account_guards.json`. Additional per-hypothesis overlays merge from `config/paper_guards/*.json` (for example `spy-equity-tsmom-1d.json`) without editing BTC/ETH entries in the base file.
 
 | Field | Role |
 |-------|------|
