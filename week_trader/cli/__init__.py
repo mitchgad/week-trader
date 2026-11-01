@@ -96,7 +96,13 @@ def main_paper_forward(argv: list[str] | None = None) -> None:
             if closes_spec is None:
                 _exit_fail("ACTION=signal requires CLOSES=<path-to-json-array> or CLOSES=live")
             if closes_spec.strip().lower() == "live":
-                print(record_signal_from_live_bars(hypothesis_id))
+                print(
+                    record_signal_from_live_bars(
+                        hypothesis_id,
+                        submit_order=True,
+                        dry_run=dry_run,
+                    )
+                )
             else:
                 closes_path = Path(closes_spec)
                 if not closes_path.is_absolute():
@@ -114,7 +120,14 @@ def main_paper_forward(argv: list[str] | None = None) -> None:
                     signal = evaluate_tsmom_4h_signal(closes, hypothesis_id=hypothesis_id)
                 else:
                     _exit_fail(f"unsupported CLOSES interval {interval!r}")
-                print(record_signal(hypothesis_id, signal))
+                print(
+                    record_signal(
+                        hypothesis_id,
+                        signal,
+                        submit_order=True,
+                        dry_run=dry_run,
+                    )
+                )
         elif action == "alerts":
             print(check_forward_anomalies(hypothesis_id))
         elif check_alerts:

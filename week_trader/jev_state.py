@@ -611,6 +611,25 @@ def _paper_account_book_fields(account_book: Any) -> dict[str, Any]:
     }
 
 
+def _read_last_signal_payload(events_path: Path) -> dict[str, Any] | None:
+    if not events_path.is_file():
+        return None
+    last_payload: dict[str, Any] | None = None
+    for line in events_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("event_type") != "signal":
+            continue
+        payload = event.get("payload")
+        if isinstance(payload, dict):
+            last_payload = payload
+    return last_payload
+
+
 def _trade_gate_fields(hypothesis_id: str, gate: str) -> dict[str, Any]:
     if gate != "trade":
         return {}
@@ -635,17 +654,15 @@ def _trade_gate_fields(hypothesis_id: str, gate: str) -> dict[str, Any]:
     intent = load_json(intent_path)
     if not isinstance(intent, dict):
         return {"order_intent_present": False, "signal_matches_intent": False}
-    last_side = read_last_signal_side(
+    last_signal = _read_last_signal_payload(
         repo_root() / "paper" / hypothesis_id / "forward" / "events.jsonl"
     )
-    intent_side = str(intent.get("side", "")).lower()
-    signal_matches = False
-    if last_side == "long" and intent_side == "buy":
-        signal_matches = True
-    if last_side == "short" and intent_side == "sell":
-        signal_matches = True
-    if last_side == "flat" and intent_side in {"sell", "buy"}:
+    from week_trader.signal_intent import signal_matches_order_intent
+
+    if last_signal is None:
         signal_matches = False
+    else:
+        signal_matches = signal_matches_order_intent(last_signal, intent)
     return {
         "order_intent_present": True,
         "order_intent_id": intent_id,
