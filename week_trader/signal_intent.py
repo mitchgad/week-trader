@@ -26,13 +26,19 @@ def signal_matches_order_intent(
     side = signal_side if signal_side is not None else normalize_signal_side(signal)
     if side == "flat":
         return False
-    if side == "pairs":
-        return False
     intent_side = str(intent.get("side", "")).lower()
     symbol_raw = intent.get("symbol")
     if not isinstance(symbol_raw, str) or not symbol_raw.strip():
         return False
     intent_symbol = normalize_trading_symbol(symbol_raw)
+    if side == "pairs":
+        long_sym = signal.get("long_symbol")
+        short_sym = signal.get("short_symbol")
+        if intent_side == "buy" and isinstance(long_sym, str) and long_sym.strip():
+            return normalize_trading_symbol(long_sym) == intent_symbol
+        if intent_side == "sell" and isinstance(short_sym, str) and short_sym.strip():
+            return normalize_trading_symbol(short_sym) == intent_symbol
+        return False
     target = signal.get("target_symbol")
     if isinstance(target, str) and target.strip():
         if normalize_trading_symbol(target) != intent_symbol:

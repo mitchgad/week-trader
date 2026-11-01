@@ -5,7 +5,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from week_trader.brokers.alpaca_paper import AlpacaPaperError, submit_alpaca_paper_order
+from week_trader.brokers.alpaca_paper import (
+    AlpacaPaperError,
+    require_paper_alpaca_host,
+    submit_alpaca_paper_order,
+)
 from week_trader.paper_account_guards import (
     PaperAccountGuardError,
     assert_account_halt_absent,
@@ -174,6 +178,7 @@ def _load_order_intent(hypothesis_id: str, order_intent_id: str) -> dict[str, An
 
 
 def _validate_order_intent(hypothesis_id: str, intent: dict[str, Any], prereg: dict[str, Any]) -> None:
+    _reject_live_alpaca_urls_in_intent(intent)
     venue = prereg.get("venue_contract", {})
     if not isinstance(venue, dict):
         raise PaperOrderError("venue_contract missing")
@@ -185,6 +190,19 @@ def _validate_order_intent(hypothesis_id: str, intent: dict[str, Any], prereg: d
         _validate_equity_intent(hypothesis_id, intent, prereg)
         return
     raise PaperOrderError(f"unsupported instrument_class {instrument!r}")
+
+
+def _reject_live_alpaca_urls_in_intent(intent: dict[str, Any]) -> None:
+    for key in ("paper_api_host", "order_url", "api_host", "base_url"):
+        value = intent.get(key)
+        if not isinstance(value, str) or not value.strip():
+            continue
+        if "api.alpaca.markets" in value and "paper-api.alpaca.markets" not in value:
+            raise PaperOrderError(f"order intent {key!r} must not point at live Alpaca host")
+        try:
+            require_paper_alpaca_host(value)
+        except AlpacaPaperError as exc:
+            raise PaperOrderError(str(exc)) from exc
 
 
 def _validate_crypto_spot_intent(hypothesis_id: str, intent: dict[str, Any], prereg: dict[str, Any]) -> None:
@@ -238,7 +256,9 @@ def _validate_equity_intent(hypothesis_id: str, intent: dict[str, Any], prereg: 
     if manifest_class not in {"equity", "equity_etf"}:
         raise PaperOrderError("manifest instrument_class must be equity or equity_etf")
     if manifest_class != instrument_class:
-        raise PaperOrderError("manifest instrument_class must match venue_contract")
+        both_equity_rail = {manifest_class, instrument_class} <= {"equity", "equity_etf"}
+        if not both_equity_rail:
+            raise PaperOrderError("manifest instrument_class must match venue_contract")
     universe = manifest.get("universe")
     if not isinstance(universe, dict):
         raise PaperOrderError("manifest universe missing")

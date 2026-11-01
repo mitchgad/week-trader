@@ -1,0 +1,10 @@
+{
+  "_note": "Term carry long VGIT leg when spread z >= entry.",
+  "paper_api_host": "https://paper-api.alpaca.markets",
+  "qty": "80",
+  "reference_price_usd": 58.0,
+  "side": "buy",
+  "symbol": "VGIT",
+  "time_in_force": "gtc",
+  "type": "market"
+}

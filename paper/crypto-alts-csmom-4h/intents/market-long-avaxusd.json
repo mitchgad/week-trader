@@ -1,0 +1,10 @@
+{
+  "_note": "Long-only alt CSMOM when AVAX/USD wins cross-section.",
+  "paper_api_host": "https://paper-api.alpaca.markets",
+  "qty": "180",
+  "reference_price_usd": 25.0,
+  "side": "buy",
+  "symbol": "AVAXUSD",
+  "time_in_force": "gtc",
+  "type": "market"
+}

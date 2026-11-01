@@ -1,0 +1,10 @@
+{
+  "_note": "Long-only CSMOM winner leg when target is EEM.",
+  "paper_api_host": "https://paper-api.alpaca.markets",
+  "qty": "100",
+  "reference_price_usd": 42.0,
+  "side": "buy",
+  "symbol": "EEM",
+  "time_in_force": "gtc",
+  "type": "market"
+}

@@ -1,0 +1,10 @@
+{
+  "_note": "Long-only GLD negative-attention; slice max 5000 USD.",
+  "paper_api_host": "https://paper-api.alpaca.markets",
+  "qty": "18",
+  "reference_price_usd": 240.0,
+  "side": "buy",
+  "symbol": "GLD",
+  "time_in_force": "gtc",
+  "type": "market"
+}

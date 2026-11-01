@@ -19,6 +19,18 @@ def test_signal_is_flat() -> None:
     assert not signal_is_flat({"side": "long"})
 
 
+def test_signal_matches_pairs_long_leg() -> None:
+    signal = {"side": "pairs", "long_symbol": "IEF", "short_symbol": "TLT"}
+    intent = {"symbol": "IEF", "side": "buy", "qty": "50"}
+    assert signal_matches_order_intent(signal, intent)
+
+
+def test_signal_matches_pairs_short_leg() -> None:
+    signal = {"side": "pairs", "long_symbol": "VB", "short_symbol": "VV"}
+    intent = {"symbol": "VV", "side": "sell", "qty": "18"}
+    assert signal_matches_order_intent(signal, intent)
+
+
 def test_signal_matches_buy_intent() -> None:
     signal = {"side": "long", "last_close": 100.0}
     intent = {"symbol": "BTCUSD", "side": "buy", "qty": "0.001"}

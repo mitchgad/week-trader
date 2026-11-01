@@ -1,0 +1,10 @@
+{
+  "_note": "Long-only QQQ volume confirmation; slice max 5000 USD.",
+  "paper_api_host": "https://paper-api.alpaca.markets",
+  "qty": "9",
+  "reference_price_usd": 490.0,
+  "side": "buy",
+  "symbol": "QQQ",
+  "time_in_force": "gtc",
+  "type": "market"
+}

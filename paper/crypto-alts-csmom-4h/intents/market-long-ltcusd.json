@@ -1,0 +1,10 @@
+{
+  "_note": "Long-only alt CSMOM when LTC/USD wins cross-section.",
+  "paper_api_host": "https://paper-api.alpaca.markets",
+  "qty": "65",
+  "reference_price_usd": 70.0,
+  "side": "buy",
+  "symbol": "LTCUSD",
+  "time_in_force": "gtc",
+  "type": "market"
+}
