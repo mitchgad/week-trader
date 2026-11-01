@@ -20,7 +20,10 @@ from week_trader.attention.google_trends import GoogleTrendsError, fetch_daily_i
 from week_trader.manifest import load_data_manifest, resolve_manifest_for_hypothesis
 from week_trader.prereg import load_preregistration
 from week_trader.strategies.coin_positive_attention_1d import evaluate_positive_attention_1d
-from week_trader.strategies.gld_negative_attention_1d import evaluate_gld_negative_attention_1d
+from week_trader.strategies.gld_negative_attention_1d import (
+    NegativeAttentionSignalError,
+    evaluate_gld_negative_attention_1d,
+)
 from week_trader.strategies.qqq_volume_confirm_1d import evaluate_qqq_volume_confirm_1d
 from week_trader.strategies.size_spread_pairs_1d import evaluate_vb_vv_size_spread_1d
 from week_trader.strategies.term_carry_pairs_1d import evaluate_vgit_shy_term_carry_1d
@@ -206,8 +209,20 @@ def record_signal_from_live_bars(
     attention = manifest.get("attention")
     if isinstance(attention, dict) and attention.get("vendor") == "google_trends_free":
         if attention.get("mode") == "positive_ratio":
-            return record_positive_attention_live_signal(hypothesis_id, manifest)
-        return record_negative_attention_live_signal(hypothesis_id, manifest)
+            return record_positive_attention_live_signal(
+                hypothesis_id,
+                manifest,
+                submit_order=submit_order,
+                dry_run=dry_run,
+                **order_kwargs,
+            )
+        return record_negative_attention_live_signal(
+            hypothesis_id,
+            manifest,
+            submit_order=submit_order,
+            dry_run=dry_run,
+            **order_kwargs,
+        )
     interval = manifest_bar_interval(hypothesis_id)
     if interval == "1Day" and hypothesis_id == "qqq-volume-confirm-1d":
         try:
@@ -277,8 +292,57 @@ def record_signal_from_live_bars(
     return record_signal(hypothesis_id, signal)
 
 
+def _attention_fetch_kwargs(attention: dict[str, Any]) -> dict[str, Any]:
+    geo = attention.get("geo", "US")
+    timeframe = attention.get("timeframe", "today 5-y")
+    lookback_rows = int(attention.get("lookback_rows", 252))
+    if not isinstance(geo, str) or not geo.strip():
+        geo = "US"
+    if not isinstance(timeframe, str) or not timeframe.strip():
+        timeframe = "today 5-y"
+    return {
+        "geo": geo.strip(),
+        "timeframe": timeframe.strip(),
+        "lookback_rows": lookback_rows,
+    }
+
+
+def record_attention_no_data_signal(
+    hypothesis_id: str,
+    *,
+    symbol: str,
+    reason: str,
+    signal_family: str,
+    submit_order: bool = False,
+    dry_run: bool = False,
+    **order_kwargs: Any,
+) -> dict[str, Any]:
+    signal: dict[str, Any] = {
+        "strategy": hypothesis_id,
+        "signal_family": signal_family,
+        "symbol": symbol.upper(),
+        "side": "no-data",
+        "signal_status": "no_data",
+        "no_data_reason": reason,
+        "ratio": None,
+        "attention_date": None,
+    }
+    return record_signal(
+        hypothesis_id,
+        signal,
+        submit_order=submit_order,
+        dry_run=dry_run,
+        **order_kwargs,
+    )
+
+
 def record_negative_attention_live_signal(
-    hypothesis_id: str, manifest: dict[str, Any]
+    hypothesis_id: str,
+    manifest: dict[str, Any],
+    *,
+    submit_order: bool = False,
+    dry_run: bool = False,
+    **order_kwargs: Any,
 ) -> dict[str, Any]:
     attention = manifest.get("attention")
     if not isinstance(attention, dict):
@@ -290,24 +354,66 @@ def record_negative_attention_live_signal(
     lookback_rows = int(attention.get("lookback_rows", 252))
     high_q = float(attention.get("high_ratio_quantile", 0.8))
     symbol = _manifest_primary_symbol(manifest)
+    fetch_kw = _attention_fetch_kwargs(attention)
     try:
-        trend_rows = fetch_daily_interest_pair(negative_kw, baseline_kw)
+        trend_rows = fetch_daily_interest_pair(
+            negative_kw,
+            baseline_kw,
+            **fetch_kw,
+        )
         daily_closes = fetch_equity_daily_bar_closes(symbol, min_bars=2)
-    except (GoogleTrendsError, AlpacaPaperError) as exc:
+    except GoogleTrendsError as exc:
+        return record_attention_no_data_signal(
+            hypothesis_id,
+            symbol=symbol,
+            reason=str(exc),
+            signal_family="negative_attention_ratio",
+            submit_order=submit_order,
+            dry_run=dry_run,
+            **order_kwargs,
+        )
+    except AlpacaPaperError as exc:
         raise PaperForwardError(str(exc)) from exc
-    signal = evaluate_gld_negative_attention_1d(
-        trend_rows,
-        hypothesis_id=hypothesis_id,
-        symbol=symbol,
-        lookback_rows=lookback_rows,
-        high_ratio_quantile=high_q,
-        negative_keyword=negative_kw,
-        baseline_keyword=baseline_kw,
-    )
+    except NegativeAttentionSignalError as exc:
+        return record_attention_no_data_signal(
+            hypothesis_id,
+            symbol=symbol,
+            reason=str(exc),
+            signal_family="negative_attention_ratio",
+            submit_order=submit_order,
+            dry_run=dry_run,
+            **order_kwargs,
+        )
+    try:
+        signal = evaluate_gld_negative_attention_1d(
+            trend_rows,
+            hypothesis_id=hypothesis_id,
+            symbol=symbol,
+            lookback_rows=lookback_rows,
+            high_ratio_quantile=high_q,
+            negative_keyword=negative_kw,
+            baseline_keyword=baseline_kw,
+        )
+    except NegativeAttentionSignalError as exc:
+        return record_attention_no_data_signal(
+            hypothesis_id,
+            symbol=symbol,
+            reason=str(exc),
+            signal_family="negative_attention_ratio",
+            submit_order=submit_order,
+            dry_run=dry_run,
+            **order_kwargs,
+        )
     signal["closes_source"] = "google_trends_free_plus_alpaca_live_1d"
     signal["last_close"] = daily_closes[-1]
     signal["bar_count"] = len(daily_closes)
-    return record_signal(hypothesis_id, signal)
+    return record_signal(
+        hypothesis_id,
+        signal,
+        submit_order=submit_order,
+        dry_run=dry_run,
+        **order_kwargs,
+    )
 
 
 def record_gld_negative_attention_live_signal(
@@ -317,7 +423,12 @@ def record_gld_negative_attention_live_signal(
 
 
 def record_positive_attention_live_signal(
-    hypothesis_id: str, manifest: dict[str, Any]
+    hypothesis_id: str,
+    manifest: dict[str, Any],
+    *,
+    submit_order: bool = False,
+    dry_run: bool = False,
+    **order_kwargs: Any,
 ) -> dict[str, Any]:
     attention = manifest.get("attention")
     if not isinstance(attention, dict):
@@ -329,24 +440,56 @@ def record_positive_attention_live_signal(
     lookback_rows = int(attention.get("lookback_rows", 252))
     high_q = float(attention.get("high_ratio_quantile", 0.8))
     symbol = _manifest_primary_symbol(manifest)
+    fetch_kw = _attention_fetch_kwargs(attention)
     try:
-        trend_rows = fetch_daily_interest_pair(positive_kw, baseline_kw)
+        trend_rows = fetch_daily_interest_pair(
+            positive_kw,
+            baseline_kw,
+            **fetch_kw,
+        )
         daily_closes = fetch_equity_daily_bar_closes(symbol, min_bars=2)
-    except (GoogleTrendsError, AlpacaPaperError) as exc:
+    except GoogleTrendsError as exc:
+        return record_attention_no_data_signal(
+            hypothesis_id,
+            symbol=symbol,
+            reason=str(exc),
+            signal_family="positive_attention_ratio",
+            submit_order=submit_order,
+            dry_run=dry_run,
+            **order_kwargs,
+        )
+    except AlpacaPaperError as exc:
         raise PaperForwardError(str(exc)) from exc
-    signal = evaluate_positive_attention_1d(
-        trend_rows,
-        hypothesis_id=hypothesis_id,
-        symbol=symbol,
-        lookback_rows=lookback_rows,
-        high_ratio_quantile=high_q,
-        positive_keyword=positive_kw,
-        baseline_keyword=baseline_kw,
-    )
+    try:
+        signal = evaluate_positive_attention_1d(
+            trend_rows,
+            hypothesis_id=hypothesis_id,
+            symbol=symbol,
+            lookback_rows=lookback_rows,
+            high_ratio_quantile=high_q,
+            positive_keyword=positive_kw,
+            baseline_keyword=baseline_kw,
+        )
+    except NegativeAttentionSignalError as exc:
+        return record_attention_no_data_signal(
+            hypothesis_id,
+            symbol=symbol,
+            reason=str(exc),
+            signal_family="positive_attention_ratio",
+            submit_order=submit_order,
+            dry_run=dry_run,
+            **order_kwargs,
+        )
     signal["closes_source"] = "google_trends_free_plus_alpaca_live_1d"
     signal["last_close"] = daily_closes[-1]
     signal["bar_count"] = len(daily_closes)
-    return record_signal(hypothesis_id, signal)
+    return record_signal(
+        hypothesis_id,
+        signal,
+        submit_order=submit_order,
+        dry_run=dry_run,
+        **order_kwargs,
+    )
 
 
 def _manifest_primary_symbol(manifest: dict[str, Any]) -> str:
@@ -893,6 +1036,6 @@ def read_last_signal_side(events_path: Path) -> str | None:
         if not isinstance(payload, dict):
             continue
         side = payload.get("side")
-        if side in {"long", "flat", "short"}:
+        if side in {"long", "flat", "short", "no-data"}:
             last_side = str(side)
     return last_side
