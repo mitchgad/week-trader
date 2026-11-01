@@ -9,6 +9,7 @@ from typing import Any, Callable
 from week_trader.brokers.alpaca_paper import (
     AlpacaPaperError,
     fetch_crypto_4h_bar_closes,
+    fetch_equity_daily_bar_closes,
     fetch_paper_account,
     fetch_paper_open_orders,
     fetch_paper_order,
@@ -70,7 +71,7 @@ def record_signal(hypothesis_id: str, signal: dict[str, Any]) -> dict[str, Any]:
     return {"recorded": True, "signal": signal}
 
 
-def manifest_crypto_symbol(hypothesis_id: str) -> str:
+def manifest_primary_symbol(hypothesis_id: str) -> str:
     prereg = load_preregistration(hypothesis_id)
     manifest_path = resolve_manifest_for_hypothesis(hypothesis_id, prereg)
     manifest = load_data_manifest(manifest_path)
@@ -83,28 +84,28 @@ def manifest_crypto_symbol(hypothesis_id: str) -> str:
     symbol = symbols[0]
     if not isinstance(symbol, str) or not symbol.strip():
         raise PaperForwardError("manifest symbol invalid")
-    bars = manifest.get("bars")
-    if isinstance(bars, dict) and bars.get("interval") != "4h":
-        raise PaperForwardError("live 4h fetch requires manifest bars.interval 4h")
     return symbol.strip()
 
 
-def fetch_live_4h_closes(hypothesis_id: str, *, min_bars: int = 8) -> list[float]:
-    symbol = manifest_crypto_symbol(hypothesis_id)
-    try:
-        return fetch_crypto_4h_bar_closes(symbol, min_bars=min_bars)
-    except AlpacaPaperError as exc:
-        raise PaperForwardError(str(exc)) from exc
+def manifest_bar_interval(hypothesis_id: str) -> str:
+    prereg = load_preregistration(hypothesis_id)
+    manifest_path = resolve_manifest_for_hypothesis(hypothesis_id, prereg)
+    manifest = load_data_manifest(manifest_path)
+    bars = manifest.get("bars")
+    if not isinstance(bars, dict):
+        raise PaperForwardError("manifest bars missing")
+    interval = bars.get("interval")
+    if not isinstance(interval, str) or not interval.strip():
+        raise PaperForwardError("manifest bars.interval missing")
+    return interval.strip()
 
 
-def record_signal_from_live_bars(hypothesis_id: str) -> dict[str, Any]:
-    symbol = manifest_crypto_symbol(hypothesis_id)
-    closes = fetch_live_4h_closes(hypothesis_id)
-    signal = evaluate_tsmom_4h_signal(closes, hypothesis_id=hypothesis_id)
-    signal["closes_source"] = "alpaca_live_4h"
-    signal["symbol"] = symbol
-    signal["bar_count"] = len(closes)
-    return record_signal(hypothesis_id, signal)
+def manifest_crypto_symbol(hypothesis_id: str) -> str:
+    """Primary manifest symbol when bars.interval is 4h (crypto TSMOM)."""
+    symbol = manifest_primary_symbol(hypothesis_id)
+    if manifest_bar_interval(hypothesis_id) != "4h":
+        raise PaperForwardError("manifest_crypto_symbol requires bars.interval 4h")
+    return symbol
 
 
 def evaluate_tsmom_4h_signal(closes: list[float], *, hypothesis_id: str) -> dict[str, Any]:
@@ -125,6 +126,69 @@ def evaluate_tsmom_4h_signal(closes: list[float], *, hypothesis_id: str) -> dict
         "side": side,
         "last_close": closes[-1],
     }
+
+
+def evaluate_dia_mean_reversion_1d_signal(closes: list[float], *, hypothesis_id: str) -> dict[str, Any]:
+    """Daily contrarian loser leg: long when prior 5-day simple return is negative."""
+    formation_days = 5
+    if len(closes) < formation_days + 1:
+        raise PaperForwardError(
+            f"need at least {formation_days + 1} daily closes for {hypothesis_id} signal"
+        )
+    start_close = closes[-(formation_days + 1)]
+    end_close = closes[-1]
+    if start_close <= 0:
+        raise PaperForwardError("invalid non-positive close in formation window")
+    formation_return = end_close / start_close - 1.0
+    side = "long" if formation_return < 0 else "flat"
+    return {
+        "strategy": hypothesis_id,
+        "formation_days": formation_days,
+        "formation_return": formation_return,
+        "side": side,
+        "last_close": end_close,
+    }
+
+
+def evaluate_signal_from_closes(closes: list[float], *, hypothesis_id: str) -> dict[str, Any]:
+    interval = manifest_bar_interval(hypothesis_id)
+    if interval == "4h":
+        return evaluate_tsmom_4h_signal(closes, hypothesis_id=hypothesis_id)
+    if interval == "1Day" and hypothesis_id == "dia-mean-reversion-1d":
+        return evaluate_dia_mean_reversion_1d_signal(closes, hypothesis_id=hypothesis_id)
+    raise PaperForwardError(f"no signal evaluator for {hypothesis_id!r} interval {interval!r}")
+
+
+def fetch_live_bar_closes(hypothesis_id: str) -> tuple[str, list[float], str]:
+    symbol = manifest_primary_symbol(hypothesis_id)
+    interval = manifest_bar_interval(hypothesis_id)
+    try:
+        if interval == "4h":
+            closes = fetch_crypto_4h_bar_closes(symbol, min_bars=8)
+            return symbol, closes, "alpaca_live_4h"
+        if interval == "1Day":
+            closes = fetch_equity_daily_bar_closes(symbol, min_bars=8)
+            return symbol, closes, "alpaca_live_1d"
+    except AlpacaPaperError as exc:
+        raise PaperForwardError(str(exc)) from exc
+    raise PaperForwardError(f"live bar fetch unsupported for interval {interval!r}")
+
+
+def fetch_live_4h_closes(hypothesis_id: str, *, min_bars: int = 8) -> list[float]:
+    symbol = manifest_crypto_symbol(hypothesis_id)
+    try:
+        return fetch_crypto_4h_bar_closes(symbol, min_bars=min_bars)
+    except AlpacaPaperError as exc:
+        raise PaperForwardError(str(exc)) from exc
+
+
+def record_signal_from_live_bars(hypothesis_id: str) -> dict[str, Any]:
+    symbol, closes, source = fetch_live_bar_closes(hypothesis_id)
+    signal = evaluate_signal_from_closes(closes, hypothesis_id=hypothesis_id)
+    signal["closes_source"] = source
+    signal["symbol"] = symbol
+    signal["bar_count"] = len(closes)
+    return record_signal(hypothesis_id, signal)
 
 
 def run_forward_monitor_tick(

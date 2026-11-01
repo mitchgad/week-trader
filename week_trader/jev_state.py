@@ -110,12 +110,21 @@ def _spec_fields(hypothesis_id: str, prereg: dict[str, Any]) -> dict[str, Any]:
         manifest_funding_null = False
 
     spot_only = (
-        instrument == "crypto_spot"
-        and venue.get("paper_venue") == "alpaca_paper"
-        and manifest_instrument == "crypto_spot"
+        venue.get("paper_venue") == "alpaca_paper"
         and manifest_funding_null
+        and (
+            (
+                instrument == "crypto_spot"
+                and manifest_instrument == "crypto_spot"
+            )
+            or (
+                instrument == "equity_etf"
+                and manifest_instrument == "equity_etf"
+            )
+        )
     )
     disconfirmers = _hypothesis_disconfirmers_ok(hypothesis_id)
+    long_only_loser = _hypothesis_long_only_loser_leg_documented(hypothesis_id)
     proof = _proof_contract_fields(prereg, hypothesis_id)
     cost_ok = False
     manifest_path: Path | None = None
@@ -129,6 +138,7 @@ def _spec_fields(hypothesis_id: str, prereg: dict[str, Any]) -> dict[str, Any]:
     return {
         "venue_contract_spot_only": spot_only,
         "disconfirmers_documented": disconfirmers,
+        "long_only_loser_leg_documented": long_only_loser,
         "manifest_cost_block_present": cost_ok,
         "engine_parity_required": engine_parity,
         "manifest_single_spot_symbol_matches": _manifest_single_symbol_matches(prereg, manifest_path),
@@ -164,7 +174,10 @@ def _proof_contract_fields(prereg: dict[str, Any], hypothesis_id: str) -> dict[s
     forbids_perp = any(
         isinstance(item, str) and "perp" in item.lower() for item in forbidden
     )
-    forward_only = proof.get("operational_validation") == "alpaca_paper_crypto_spot_forward_only"
+    forward_only = proof.get("operational_validation") in (
+        "alpaca_paper_crypto_spot_forward_only",
+        "alpaca_paper_equity_forward_only",
+    )
     spot_proof_allowed = any(
         isinstance(item, str) and "spot" in item.lower() for item in allowed
     )
@@ -223,6 +236,18 @@ def _hypothesis_disconfirmers_ok(hypothesis_id: str) -> bool:
     dis_section = text[dis_idx:]
     proof_markers = ("perp funding", "perp", "funding p", "binance", "carry", "basis")
     return any(marker in dis_section for marker in proof_markers)
+
+
+def _hypothesis_long_only_loser_leg_documented(hypothesis_id: str) -> bool:
+    if hypothesis_id != "dia-mean-reversion-1d":
+        return False
+    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
+    if not path.is_file():
+        return False
+    text = path.read_text(encoding="utf-8").lower()
+    if "long-only scope" not in text and "long-only loser" not in text:
+        return False
+    return "10.1016/j.jfineco.2012.11.005" in text or "israel" in text
 
 
 def _forward_operational_fields(hypothesis_id: str) -> dict[str, Any]:

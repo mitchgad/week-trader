@@ -32,7 +32,41 @@ def load_guards_config() -> dict[str, Any]:
     data = load_json(path)
     if not isinstance(data, dict):
         raise PaperAccountGuardError("paper_account_guards.json must be an object")
-    return data
+    return _merge_per_hypothesis_guard_files(data)
+
+
+def _merge_per_hypothesis_guard_files(base: dict[str, Any]) -> dict[str, Any]:
+    """Overlay config/paper_guards/<hypothesis_id>.json slices and symbol owners."""
+    guards_dir = repo_root() / "config" / "paper_guards"
+    if not guards_dir.is_dir():
+        return base
+    slices = base.get("strategy_slices")
+    if not isinstance(slices, dict):
+        slices = {}
+    owners = base.get("symbol_owners")
+    if not isinstance(owners, dict):
+        owners = {}
+    for path in sorted(guards_dir.glob("*.json")):
+        hid = path.stem
+        if not path.is_file():
+            continue
+        overlay = load_json(path)
+        if not isinstance(overlay, dict):
+            continue
+        max_notional = overlay.get("max_notional_usd")
+        fill_tag = overlay.get("fill_tag")
+        if max_notional is not None and isinstance(fill_tag, str) and fill_tag.strip():
+            slices[hid] = {
+                "max_notional_usd": max_notional,
+                "fill_tag": fill_tag.strip(),
+            }
+        overlay_owners = overlay.get("symbol_owners")
+        if isinstance(overlay_owners, dict):
+            for key, owner in overlay_owners.items():
+                if isinstance(key, str) and isinstance(owner, str):
+                    owners[key] = owner
+    merged = {**base, "strategy_slices": slices, "symbol_owners": owners}
+    return merged
 
 
 def normalize_guard_symbol(symbol: str) -> str:
