@@ -1,0 +1,60 @@
+{
+  "freeze_manifest_hash": "370600df6604f6b2d9cca86251feba594e591660eb2e232df44ef66c75db80c6",
+  "gate": "spec",
+  "hypothesis_id": "spy-equity-tsmom-1d",
+  "log_signature": "7fbc014e00b8c6d9a3e2f5602541be457a75cfee838a9fbb31036e45e5efe509",
+  "model_id": "jev-1.14.0",
+  "pass": true,
+  "request_hash": "f8bd0347bf1526eace473a091068c74a6ad841b0f96496d9987534483d9d0dd4",
+  "response": {
+    "answers": {
+      "alpaca_paper_host_only": {
+        "noul": 0.88,
+        "type": "noul"
+      },
+      "equity_tsmom_portability_not_settled": {
+        "noul": 0.74,
+        "type": "noul"
+      },
+      "spec_falsifiable_spy_equity": {
+        "noul": 0.78,
+        "type": "noul"
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 1368,
+      "output_tokens": 76
+    }
+  },
+  "response_body_hash": "8e2c25af372bb13658fb4400e4a33a130dc3c18e0d74aa512a8a55ecc49da2f2",
+  "state_hash": "61db2cb98d33ed973e34fa8bdb2dc5203d1995f6235577522084c743560d6c36",
+  "threshold_compare": {
+    "comparisons": [
+      {
+        "min_required": 0.65,
+        "pass": true,
+        "probability": 0.78,
+        "question_id": "spec_falsifiable_spy_equity",
+        "type": "noul"
+      },
+      {
+        "min_required": 0.65,
+        "pass": true,
+        "probability": 0.74,
+        "question_id": "equity_tsmom_portability_not_settled",
+        "type": "noul"
+      },
+      {
+        "min_required": 0.65,
+        "pass": true,
+        "probability": 0.88,
+        "question_id": "alpaca_paper_host_only",
+        "type": "noul"
+      }
+    ],
+    "gate": "spec",
+    "pass": true
+  },
+  "timestamp_utc": "2026-11-01T02:05:53Z"
+}

@@ -52,12 +52,8 @@ def test_fetch_crypto_4h_bar_closes_parses_series(monkeypatch: pytest.MonkeyPatc
 def test_record_signal_from_live_bars(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr("week_trader.paper_forward.repo_root", lambda: tmp_path)
     monkeypatch.setattr(
-        "week_trader.paper_forward.fetch_live_bar_closes",
-        lambda _hid: (
-            "BTC/USD",
-            [100.0, 101.0, 102.0, 103.0, 104.0, 105.0, 106.0, 107.0],
-            "alpaca_live_4h",
-        ),
+        "week_trader.paper_forward.fetch_live_4h_closes",
+        lambda _hid, min_bars=8: [100.0, 101.0, 102.0, 103.0, 104.0, 105.0, 106.0, 107.0],
     )
     monkeypatch.setattr(
         "week_trader.paper_forward.manifest_crypto_symbol",

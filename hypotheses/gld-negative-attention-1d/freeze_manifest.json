@@ -1,0 +1,14 @@
+{
+  "artifacts": {
+    "HYPOTHESIS.md": "sha256:a309c0081f18fa378cec1784b016349853d9863d1fcb02de2ba9c56a26ffa151",
+    "data_manifest": {
+      "path": "data/manifests/gld-negative-attention-1d-alpaca.yaml",
+      "sha256": "85466b85370b158bfe52a8692e85b0037389220c59716b9cbfaa178dbaac0824"
+    },
+    "preregistration.json": "sha256:c67ca3d7d02058feba3ea2daddb128b9dc74829f783fcdbfc89d73d30c52e16a"
+  },
+  "description": "Bind HYPOTHESIS.md, preregistration.json, and data manifest before Jev or paper forward.",
+  "frozen_at_utc": "2026-11-01T02:15:00Z",
+  "hypothesis_id": "gld-negative-attention-1d",
+  "schema_version": 1
+}

@@ -1,7 +1,13 @@
 {
-  "max_notional_usd": 5000,
-  "fill_tag": "wt-dia-mean-reversion-1d",
+  "schema_version": 1,
+  "hypothesis_id": "dia-mean-reversion-1d",
   "symbol_owners": {
     "DIA": "dia-mean-reversion-1d"
+  },
+  "strategy_slices": {
+    "dia-mean-reversion-1d": {
+      "max_notional_usd": 5000,
+      "fill_tag": "wt-dia-mean-reversion-1d"
+    }
   }
 }

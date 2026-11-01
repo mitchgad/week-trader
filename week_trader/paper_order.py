@@ -78,7 +78,7 @@ def paper_order(
         raise PaperOrderError("Alpaca paper invalid for crypto_perp venue_contract")
 
     intent = _load_order_intent(hypothesis_id, order_intent_id)
-    _validate_spot_intent(hypothesis_id, intent, prereg)
+    _validate_order_intent(hypothesis_id, intent, prereg)
     paper_venue = venue.get("paper_venue")
     if paper_venue != "alpaca_paper":
         raise PaperOrderError(f"unsupported paper_venue {paper_venue!r}")
@@ -173,26 +173,42 @@ def _load_order_intent(hypothesis_id: str, order_intent_id: str) -> dict[str, An
     return data
 
 
-def _validate_spot_intent(hypothesis_id: str, intent: dict[str, Any], prereg: dict[str, Any]) -> None:
+def _validate_order_intent(hypothesis_id: str, intent: dict[str, Any], prereg: dict[str, Any]) -> None:
     venue = prereg.get("venue_contract", {})
     if not isinstance(venue, dict):
         raise PaperOrderError("venue_contract missing")
-    if venue.get("instrument_class") not in {"crypto_spot", "equity_etf"}:
-        raise PaperOrderError("order intents require crypto_spot or equity_etf venue_contract")
+    instrument = venue.get("instrument_class")
+    if instrument == "crypto_spot":
+        _validate_crypto_spot_intent(hypothesis_id, intent, prereg)
+        return
+    if instrument in {"equity", "equity_etf"}:
+        _validate_equity_intent(hypothesis_id, intent, prereg)
+        return
+    raise PaperOrderError(f"unsupported instrument_class {instrument!r}")
+
+
+def _validate_crypto_spot_intent(hypothesis_id: str, intent: dict[str, Any], prereg: dict[str, Any]) -> None:
+    venue = prereg.get("venue_contract", {})
+    if not isinstance(venue, dict):
+        raise PaperOrderError("venue_contract missing")
+    instrument_class = venue.get("instrument_class")
+    if instrument_class not in {"crypto_spot", "equity"}:
+        raise PaperOrderError("order intents require crypto_spot or equity venue_contract")
     symbol = intent.get("symbol")
     if not isinstance(symbol, str) or not symbol.strip():
         raise PaperOrderError("order intent symbol required")
     normalized = symbol.strip().upper()
-    perp_markers = ("PERP", "USDTM", "USDTP", "SWAP", "-P")
-    if any(marker in normalized for marker in perp_markers):
-        raise PaperOrderError("perp-like symbol forbidden on Alpaca spot paper rail")
+    if instrument_class == "crypto_spot":
+        perp_markers = ("PERP", "USDTM", "USDTP", "SWAP", "-P")
+        if any(marker in normalized for marker in perp_markers):
+            raise PaperOrderError("perp-like symbol forbidden on Alpaca spot paper rail")
     try:
         manifest_path = resolve_manifest_for_hypothesis(hypothesis_id, prereg)
         manifest = load_data_manifest(manifest_path)
     except ManifestError as exc:
         raise PaperOrderError(str(exc)) from exc
-    if manifest.get("instrument_class") not in {"crypto_spot", "equity_etf"}:
-        raise PaperOrderError("manifest instrument_class must be crypto_spot or equity_etf")
+    if manifest.get("instrument_class") != instrument_class:
+        raise PaperOrderError("manifest instrument_class must match venue_contract")
     universe = manifest.get("universe")
     if not isinstance(universe, dict):
         raise PaperOrderError("manifest universe missing")
@@ -200,8 +216,38 @@ def _validate_spot_intent(hypothesis_id: str, intent: dict[str, Any], prereg: di
     if not isinstance(symbols, list) or not symbols:
         raise PaperOrderError("manifest universe.symbols missing")
     allowed = {_manifest_symbol_to_alpaca(s) for s in symbols if isinstance(s, str)}
-    if normalized not in allowed and normalized.replace("/", "") not in allowed:
+    if normalized not in allowed:
         raise PaperOrderError(f"symbol {normalized!r} not in manifest universe")
+
+
+def _validate_equity_intent(hypothesis_id: str, intent: dict[str, Any], prereg: dict[str, Any]) -> None:
+    venue = prereg.get("venue_contract", {})
+    instrument_class = venue.get("instrument_class")
+    if instrument_class not in {"equity", "equity_etf"}:
+        raise PaperOrderError("order intents require equity or equity_etf venue_contract")
+    symbol = intent.get("symbol")
+    if not isinstance(symbol, str) or not symbol.strip():
+        raise PaperOrderError("order intent symbol required")
+    normalized = symbol.strip().upper()
+    try:
+        manifest_path = resolve_manifest_for_hypothesis(hypothesis_id, prereg)
+        manifest = load_data_manifest(manifest_path)
+    except ManifestError as exc:
+        raise PaperOrderError(str(exc)) from exc
+    manifest_class = manifest.get("instrument_class")
+    if manifest_class not in {"equity", "equity_etf"}:
+        raise PaperOrderError("manifest instrument_class must be equity or equity_etf")
+    if manifest_class != instrument_class:
+        raise PaperOrderError("manifest instrument_class must match venue_contract")
+    universe = manifest.get("universe")
+    if not isinstance(universe, dict):
+        raise PaperOrderError("manifest universe missing")
+    symbols = universe.get("symbols")
+    if not isinstance(symbols, list) or not symbols:
+        raise PaperOrderError("manifest universe.symbols missing")
+    allowed = {str(s).strip().upper() for s in symbols if isinstance(s, str)}
+    if normalized not in allowed:
+        raise PaperOrderError(f"symbol {normalized!r} not in manifest equity universe")
 
 
 def _manifest_symbol_to_alpaca(manifest_symbol: str) -> str:
