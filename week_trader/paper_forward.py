@@ -28,6 +28,7 @@ from week_trader.strategies.qqq_volume_confirm_1d import evaluate_qqq_volume_con
 from week_trader.strategies.size_spread_pairs_1d import evaluate_vb_vv_size_spread_1d
 from week_trader.strategies.term_carry_pairs_1d import evaluate_vgit_shy_term_carry_1d
 from week_trader.strategies.xbi_max_short_1d import evaluate_xbi_max_short_1d
+from week_trader.forward_pnl_adjustments import build_forward_pnl_adjustments
 from week_trader.util import load_json, repo_root
 
 
@@ -785,8 +786,16 @@ def run_forward_monitor_tick(
         synced_utc=synced_utc,
     )
 
-    fills_synced = _sync_pending_orders(hypothesis_id, get_order)
+    fills_synced = _sync_pending_orders(hypothesis_id, get_order, synced_utc=synced_utc)
     pnl = _pnl_snapshot(account, positions)
+    pnl_view = build_forward_pnl_adjustments(
+        hypothesis_id,
+        raw_snapshot=pnl,
+        positions=positions,
+        forward_directory=forward_dir(hypothesis_id),
+        synced_utc=synced_utc,
+    )
+    pnl = {**pnl, "pnl_view": pnl_view}
     btc_spot_position: dict[str, Any] | None = None
     try:
         manifest_symbol = manifest_trading_symbol(hypothesis_id)
@@ -811,6 +820,7 @@ def run_forward_monitor_tick(
         "cash": pnl.get("cash"),
         "buying_power": pnl.get("buying_power"),
         "unrealized_pl": pnl.get("unrealized_pl"),
+        "pnl_view": pnl_view,
         "open_positions": len(positions),
         "open_order_count": account_book["open_order_count"],
         "account_book": account_book,
@@ -849,7 +859,9 @@ def run_forward_monitor_with_alerts(
     return {**status, "anomaly_severity": alerts.get("severity"), "anomaly_count": alerts.get("alert_count")}
 
 
-def _sync_pending_orders(hypothesis_id: str, get_order: FetchOrder) -> list[dict[str, Any]]:
+def _sync_pending_orders(
+    hypothesis_id: str, get_order: FetchOrder, *, synced_utc: str | None = None
+) -> list[dict[str, Any]]:
     directory = forward_dir(hypothesis_id)
     pending_path = directory / "pending_orders.json"
     if not pending_path.is_file():
@@ -873,8 +885,11 @@ def _sync_pending_orders(hypothesis_id: str, get_order: FetchOrder) -> list[dict
                     "order_id": order_id,
                     "status": status,
                     "symbol": order.get("symbol"),
+                    "side": order.get("side"),
                     "filled_qty": order.get("filled_qty"),
                     "filled_avg_price": order.get("filled_avg_price"),
+                    "filled_at": order.get("filled_at"),
+                    "synced_at_utc": synced_utc or _utc_now(),
                     "meta": meta,
                 }
             )
