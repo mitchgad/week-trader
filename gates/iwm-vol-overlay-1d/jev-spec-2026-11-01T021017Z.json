@@ -1,0 +1,60 @@
+{
+  "freeze_manifest_hash": "d2bee2ac2aa39b55ba6b7b3069da9757b7fd0d4beaae5233ed64325a34b0898c",
+  "gate": "spec",
+  "hypothesis_id": "iwm-vol-overlay-1d",
+  "log_signature": "59626fd422884df09570dfdcb18c052b1d6c85a10f61753568d27b46e551d8e1",
+  "model_id": "jev-1.14.0",
+  "pass": false,
+  "request_hash": "93375c9e44050002d032d7412f7b9ac8db8517dbc139cf7b0b90454f2211a120",
+  "response": {
+    "answers": {
+      "moreira_overlay_unproven_iwm": {
+        "noul": 0.7,
+        "type": "noul"
+      },
+      "spec_falsifiable_iwm_vol": {
+        "noul": 0.82,
+        "type": "noul"
+      },
+      "vol_overlay_long_only_honest": {
+        "noul": 0.61,
+        "type": "noul"
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 1460,
+      "output_tokens": 72
+    }
+  },
+  "response_body_hash": "36d4805209dde4f3a57bb2d2f8a0947c8f5a660db01b2e0aedf769876a348f0b",
+  "state_hash": "0fa783520e0dfd3662cb8fae114198c4bc5f86c431f420658ab5993563a44f6b",
+  "threshold_compare": {
+    "comparisons": [
+      {
+        "min_required": 0.65,
+        "pass": true,
+        "probability": 0.82,
+        "question_id": "spec_falsifiable_iwm_vol",
+        "type": "noul"
+      },
+      {
+        "min_required": 0.65,
+        "pass": false,
+        "probability": 0.61,
+        "question_id": "vol_overlay_long_only_honest",
+        "type": "noul"
+      },
+      {
+        "min_required": 0.65,
+        "pass": true,
+        "probability": 0.7,
+        "question_id": "moreira_overlay_unproven_iwm",
+        "type": "noul"
+      }
+    ],
+    "gate": "spec",
+    "pass": false
+  },
+  "timestamp_utc": "2026-11-01T02:10:17Z"
+}
