@@ -99,7 +99,10 @@ def manifest_bar_interval(hypothesis_id: str) -> str:
     interval = bars.get("interval")
     if not isinstance(interval, str) or not interval.strip():
         raise PaperForwardError("manifest bars.interval missing")
-    return interval.strip()
+    normalized = interval.strip()
+    if normalized.lower() in {"1d", "1day"}:
+        return "1Day"
+    return normalized
 
 
 def manifest_universe_symbols(hypothesis_id: str) -> list[str]:
@@ -358,9 +361,55 @@ def evaluate_tlt_ief_pairs_1d_signal(
     }
 
 
+IWM_MOM_LONG_OFFSET = 252
+IWM_MOM_SKIP_RECENT = 21
+IWM_RV_WINDOW = 21
+IWM_SIGMA_STAR = 0.10
+IWM_RV_FLOOR = 0.01
+IWM_DUST_WEIGHT = 0.05
+
+
+def evaluate_iwm_vol_overlay_signal(closes: list[float], *, hypothesis_id: str) -> dict[str, Any]:
+    """Daily IWM vol-managed overlay: Moreira-Muir w_t = sigma_star / rv (long-only base)."""
+    min_needed = IWM_MOM_LONG_OFFSET + IWM_MOM_SKIP_RECENT + 2
+    if len(closes) < min_needed:
+        raise PaperForwardError(
+            f"need at least {min_needed} daily closes for iwm vol overlay; got {len(closes)}"
+        )
+    mom_12_1 = math.log(closes[-1 - IWM_MOM_SKIP_RECENT] / closes[-1 - IWM_MOM_LONG_OFFSET])
+    base_long = mom_12_1 > 0.0
+    rv_window = closes[-(IWM_RV_WINDOW + 1) :]
+    daily_logs = [math.log(rv_window[i] / rv_window[i - 1]) for i in range(1, len(rv_window))]
+    if len(daily_logs) < IWM_RV_WINDOW:
+        raise PaperForwardError("insufficient daily returns for realized vol")
+    mean = sum(daily_logs) / len(daily_logs)
+    var = sum((x - mean) ** 2 for x in daily_logs) / max(len(daily_logs) - 1, 1)
+    rv_21 = math.sqrt(var) * math.sqrt(252.0)
+    target_weight = 0.0
+    if base_long:
+        rv_eff = max(rv_21, IWM_RV_FLOOR)
+        target_weight = max(0.0, IWM_SIGMA_STAR / rv_eff)
+    exec_weight = min(target_weight, 1.0)
+    side = "long" if exec_weight >= IWM_DUST_WEIGHT else "flat"
+    return {
+        "strategy": hypothesis_id,
+        "side": side,
+        "target_weight": target_weight,
+        "exec_weight": exec_weight,
+        "base_long": base_long,
+        "mom_12_1": mom_12_1,
+        "rv_21_annualized": rv_21,
+        "rv_floor": IWM_RV_FLOOR,
+        "sigma_star": IWM_SIGMA_STAR,
+        "last_close": closes[-1],
+    }
+
+
 def evaluate_equity_1d_signal(closes: list[float], *, hypothesis_id: str) -> dict[str, Any]:
     if hypothesis_id == "dia-mean-reversion-1d":
         return evaluate_dia_mean_reversion_1d_signal(closes, hypothesis_id=hypothesis_id)
+    if hypothesis_id == "iwm-vol-overlay-1d":
+        return evaluate_iwm_vol_overlay_signal(closes, hypothesis_id=hypothesis_id)
     return evaluate_tsmom_1d_signal(closes, hypothesis_id=hypothesis_id)
 
 

@@ -18,6 +18,7 @@ gates/*/
 !gates/dia-mean-reversion-1d/
 !gates/eem-xlf-csmom-1d/
 !gates/tlt-ief-pairs-1d/
+!gates/iwm-vol-overlay-1d/
 !gates/gld-negative-attention-1d/
 !gates/spy-equity-tsmom-1d/
 backtests/*/
