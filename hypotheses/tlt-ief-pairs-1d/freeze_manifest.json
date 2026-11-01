@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "tlt-ief-pairs-1d",
+  "description": "Frozen spec artifacts",
+  "artifacts": {
+    "HYPOTHESIS.md": "sha256:729ff3dbdefd14d9c49ff826a9fe3cc12e125f57dc9edd165e968fe8bde3709f",
+    "preregistration.json": "sha256:1837cb82657c1565bca9fd80d5a290e88f15e207b08aa1ca95cf2a25211ebca3",
+    "data_manifest": {
+      "path": "data/manifests/tlt-ief-pairs-1d-alpaca.yaml",
+      "sha256": "sha256:e18b75d11c1df9cda60a093f5bf7ec35a4c8f97cf290579999be9d384eaa9fc7"
+    }
+  },
+  "frozen_at_utc": null
+}
