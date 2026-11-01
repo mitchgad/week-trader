@@ -787,7 +787,13 @@ def run_forward_monitor_tick(
     )
 
     fills_synced = _sync_pending_orders(hypothesis_id, get_order, synced_utc=synced_utc)
+    from week_trader.forward_track_record import (
+        build_forward_evidence_check,
+        build_strategy_attribution,
+    )
+
     pnl = _pnl_snapshot(account, positions)
+    pnl["strategy_attribution"] = build_strategy_attribution(hypothesis_id, positions)
     pnl_view = build_forward_pnl_adjustments(
         hypothesis_id,
         raw_snapshot=pnl,
@@ -812,6 +818,11 @@ def run_forward_monitor_tick(
     for fill in fills_synced:
         append_forward_event(hypothesis_id, "fill", fill)
 
+    forward_evidence = build_forward_evidence_check(
+        hypothesis_id,
+        forward_directory=forward_dir(hypothesis_id),
+    )
+
     status = {
         "hypothesis_id": hypothesis_id,
         "timestamp_utc": synced_utc,
@@ -821,6 +832,7 @@ def run_forward_monitor_tick(
         "buying_power": pnl.get("buying_power"),
         "unrealized_pl": pnl.get("unrealized_pl"),
         "pnl_view": pnl_view,
+        "forward_evidence": forward_evidence,
         "open_positions": len(positions),
         "open_order_count": account_book["open_order_count"],
         "account_book": account_book,

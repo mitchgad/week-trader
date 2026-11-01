@@ -54,7 +54,7 @@ paper-forward ID=spy-equity-tsmom-1d ACTION=signal CLOSES=live
 paper-forward ID=btc-spot-tsmom-4h ACTION=alerts
 ```
 
-Events append to `paper/<id>/forward/events.jsonl`; latest snapshot in `status.json` (includes **`pnl_view`** with raw Alpaca equity vs adjusted equity after manifest fill costs and accrued cash dividends); anomaly report in `alerts.json`.
+Events append to `paper/<id>/forward/events.jsonl`; latest snapshot in `status.json` (includes **`pnl_view`**, **`forward_evidence`** with PSR / MinTRL / deflated Sharpe vs ~14 running strategies, and **`not_enough_data_yet`** until MinTRL is met); anomaly report in `alerts.json`.
 
 Research backtests (not validation — do not cite as edge):
 
