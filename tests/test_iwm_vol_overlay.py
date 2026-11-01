@@ -22,7 +22,7 @@ def test_iwm_vol_overlay_signal_long_when_momentum_and_low_vol() -> None:
     signal = evaluate_iwm_vol_overlay_signal(closes, hypothesis_id="iwm-vol-overlay-1d")
     assert signal["base_long"] is True
     assert signal["side"] == "long"
-    assert 0.0 < signal["target_weight"] <= 1.0
+    assert signal["target_weight"] > 0.0
 
 
 def test_iwm_vol_overlay_signal_flat_when_momentum_negative() -> None:

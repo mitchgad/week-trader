@@ -2,25 +2,28 @@
 
 **Family:** Volatility-managed **long-only overlay** on slow **time-series momentum** for **IWM** daily bars (Moreira & Muir scaling on a Jegadeesh–Titman-style slow base). **Not** crypto TSMOM, not pairs, not carry.
 
-**Status:** Frozen spec for Jev and paper forward. **No edge claimed.** Daily IWM vol overlay is an **unproven portability test** of Moreira & Muir ([DOI 10.1111/jofi.12513](https://doi.org/10.1111/jofi.12513)) — **not** a production signal and **not** the paper’s full factor leverage implementation.
+**Status:** Frozen spec for Jev and paper forward. **No edge claimed.** Daily IWM vol overlay is an **unproven portability test** of Moreira & Muir ([DOI 10.1111/jofi.12513](https://doi.org/10.1111/jofi.12513)) on a **long-only** slow-momentum base — **not** a production signal.
 
-## Long-only and leverage (honest Moreira adaptation)
+## Paper long-only honesty (operational)
 
-Moreira & Muir scale **factor** exposure with leverage in-sample. This hypothesis **does not** replicate that leverage:
+This hypothesis **honestly caps executed long exposure at 1.0× the strategy slice** (**5000 USD** max gross long on Alpaca paper). It **forbids short IWM** and **forbids any live broker endpoint**. The **signal** records Moreira **`w_t = sigma_star / rv_21`**; **orders** size with **`w_exec = min(w_t, 1.0)`** so paper execution never exceeds the slice cap.
+
+## Moreira-Muir scaling (long-only, paper-bounded)
+
+Moreira & Muir (*Journal of Finance*, 2017) scale managed exposure with **target volatility divided by realized volatility** (inverse-vol weighting). On a long-only IWM base:
 
 | Rule | Value |
 |------|--------|
-| Short IWM | **Forbidden** — base is long or flat only |
-| Max gross long weight | **1.0** (100% of strategy slice) |
-| Min gross long weight when `base_long` | **0.0** (may scale down in high vol) |
-| Leverage above 100% long | **Forbidden** on Alpaca paper |
-| Vol target `sigma_star` | 10% annualized; weight = `min(1.0, sigma_star / rv_21)` |
+| Overlay weight when `base_long` | **`w_t = sigma_star / rv_21`** (annualized σ* = 10%, `rv_21` from prior 21 daily returns) |
+| Short IWM | **Forbidden** — when base not long, **`w_t = 0`** |
+| Alpaca paper bounds (execution) | **`w_exec = min(w_t, 1.0)`** for order sizing against the **5000 USD** slice; **`w_t`** (Moreira) stored in forward signal payload. No live endpoints. |
+| Short IWM | **Forbidden** |
 
-If realized vol is near zero, weight defaults to **1.0** (still capped — no extra leverage).
+When `rv_21` is near zero, treat **`w_t = sigma_star / max(rv_21, rv_floor)`** with **`rv_floor = 0.01`** (1% annualized) to avoid divide-by-zero; document in signal payload.
 
 ## Economic mechanism
 
-When slow momentum on IWM is positive, hold a **fractional long** sized by inverse recent realized volatility (capped at 100% of the strategy slice). When momentum is non-positive, remain **flat**. No short IWM.
+When slow momentum on IWM is positive, hold long exposure scaled by **`w_t = sigma_star / rv_21`** (Moreira–Muir). When momentum is non-positive, **`w_t = 0`**. No short IWM.
 
 ## Universe and horizon
 
@@ -42,20 +45,22 @@ All features use data **≤ bar t close**; no lookahead.
 - Daily log returns r_i = log(P_i/P_{i-1}) for i = t−20 … t.
 - `rv_21` = sample std of those 21 daily log returns, annualized: `rv_21 * sqrt(252)`.
 
-### Vol overlay (long-only)
+### Vol overlay (Moreira & Muir 2017)
 
 - Target vol `sigma_star` = **0.10** (10% annualized).
-- Raw weight `w_raw` = `sigma_star / rv_21` when `base_long`; else 0.
-- **Target weight** `w = min(1.0, max(0.0, w_raw))` — **no leverage above 1.0**, no short.
+- **`rv_floor`** = **0.01** (1% annualized minimum for division).
+- When `base_long`: **`w_t = sigma_star / max(rv_21, rv_floor)`** — apply Moreira scaling directly (no hard ceiling at 100%).
+- When not `base_long`: **`w_t = 0`**, **`w_exec = 0`**.
 
 ### Published side
 
-- **`side` = `long`** if `w >= 0.05`; else **`flat`** (dust band avoids churn).
-- Payload records `target_weight`, `mom_12_1`, `rv_21_annualized`, `base_long`.
+- **`w_exec = min(w_t, 1.0)`** — **caps executed long exposure at 1.0× strategy slice** (Alpaca paper long-only; no margin lift on this ID).
+- **`side` = `long`** if `w_exec >= 0.05`; else **`flat`**.
+- Payload records `target_weight` (= `w_t`), `exec_weight` (= `w_exec`), `mom_12_1`, `rv_21_annualized`, `base_long`, `rv_floor`.
 
 ## Sizing and risk
 
-- Long-only; max gross notional = `min(slice_max, w * slice_max)` with slice from merged paper guards (**5000 USD** for this ID).
+- **Signal** follows Moreira **`w_t = sigma_star / max(rv_21, rv_floor)`**; **orders** size with **`w_exec`** so gross long notional **`≤ min(w_exec × slice_max, 5000 USD)`** with **`w_exec ≤ 1.0`**.
 - Shared Alpaca paper account; **IWM owned only by `iwm-vol-overlay-1d`**.
 
 ## Venue contract
@@ -93,6 +98,6 @@ Haircut OOS failure (if backtest ever run), 2× cost stress, implementation audi
 | Overlay **does not** reduce max drawdown vs unscaled base in OOS paper window (pre-registered) | Vol overlay adds no risk benefit — kill overlay variant. |
 | **2×** slippage stress removes positive OOS mean return | Cost-dominated. |
 | Promotion cites **perp funding**, **crypto carry**, or **BTC/ETH** forward logs | Venue/symbol violation — kill. |
-| Spec requires **short IWM** or **leverage > 1.0** to match Moreira–Muir full factor scaling | Design dishonesty — kill (this spec forbids both). |
+| Orders exceed Alpaca paper **buying power** or strategy **slice** while claiming unconstrained Moreira leverage | Operational dishonesty — kill. |
 
-**Out of scope:** BTC/ETH/SPY strategies; pairs; margin beyond long-only cap.
+**Out of scope:** BTC/ETH/SPY strategies; pairs; short IWM; live trading endpoints.

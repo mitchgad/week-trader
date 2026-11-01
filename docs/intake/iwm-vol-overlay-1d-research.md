@@ -6,13 +6,13 @@
 
 | Layer | Source | Role in spec |
 |-------|--------|----------------|
-| Vol-managed scaling | Moreira & Muir, *Journal of Finance* 2017, [DOI 10.1111/jofi.12513](https://doi.org/10.1111/jofi.12513) | Scale exposure inversely with **prior** realized volatility; improves risk-adjusted returns on factor portfolios in their sample. |
-| Slow directional base | Jegadeesh & Titman (1993) monthly momentum; Moskowitz, Ooi & Pedersen (2012) time-series momentum — cited in Moreira & Muir; Week trader C7 example in [algorithms-and-paper-trade.md](../../docs/algorithms-and-paper-trade.md) §C7 | **12-1 month** style daily momentum on IWM: long when 12-month return minus most recent month is positive; **flat** otherwise (no short leg). |
-| Long-only honesty | Project constraint + Alpaca paper | Overlay weight capped at **1.0** (no leverage beyond full notional); weight **0** when base flat. No short selling, no vol-target leverage above 100% long exposure. |
+| Vol-managed scaling | Moreira & Muir, *Journal of Finance* 2017, [DOI 10.1111/jofi.12513](https://doi.org/10.1111/jofi.12513) | **`w_t = σ*/σ_{t-1}`** (here `sigma_star / rv_21`); scale **up** when vol is low and **down** when vol is high — no artificial `min(1.0,·)` on the signal. |
+| Slow directional base | Jegadeesh & Titman (1993); Moskowitz, Ooi & Pedersen (2012) TSMOM — C7 in [algorithms-and-paper-trade.md](../../docs/algorithms-and-paper-trade.md) §C7 | **12-1 month** daily momentum on IWM; flat when not `base_long` (no short). |
+| Long-only + paper | Alpaca paper equities | **No short**; `w_t` may exceed 1 when σ is low (Moreira); **executed** size bounded by **5000 USD slice** and account **buying power** in `paper-order`. |
 
 **Why IWM:** Liquid US small-cap ETF with daily Alpaca equity data; distinct symbol owner from BTC/ETH on the shared paper account.
 
-**Why not parked:** Design is implementable **long-only** on Alpaca paper with free Alpaca market data — no paid vendor, no short, no margin beyond cash long within the **5000 USD** strategy slice.
+**Why not parked:** Implementable on Alpaca paper with free daily bars — no short, no paid data, no live endpoint; Moreira **`w_t > 1`** uses **Reg-T margin within paper buying power**, bounded by the **5000 USD** slice at execution.
 
 ## Limits (not literature-settled)
 

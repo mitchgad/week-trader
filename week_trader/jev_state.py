@@ -129,7 +129,7 @@ def _spec_fields(hypothesis_id: str, prereg: dict[str, Any]) -> dict[str, Any]:
     equity_symbol_ok = _manifest_single_equity_symbol_matches(prereg, manifest_path, venue)
     vol_overlay_ok = _hypothesis_vol_overlay_long_only(hypothesis_id)
     overlay_ack = _hypothesis_overlay_portability_acknowledged(hypothesis_id)
-    long_only_excerpt = _hypothesis_section_excerpt(hypothesis_id, "long-only and leverage")
+    long_only_excerpt = _hypothesis_section_excerpt(hypothesis_id, "moreira-muir scaling")
     return {
         "venue_contract_spot_only": spot_only,
         "venue_contract_equity_alpaca": _venue_contract_equity_alpaca(venue, manifest_instrument),
@@ -477,10 +477,12 @@ def _hypothesis_vol_overlay_long_only(hypothesis_id: str) -> bool:
     if not path.is_file():
         return False
     text = path.read_text(encoding="utf-8").lower()
+    compact = text.replace(" ", "")
     return (
         "long-only" in text
-        and "min(1.0" in text.replace(" ", "")
-        and "no short" in text
+        and "sigma_star/rv_21" in compact
+        and "w_exec=min(w_t,1.0)" in compact.replace(" ", "")
+        and ("no short" in text or ("forbidden" in text and "short" in text))
     )
 
 
@@ -519,11 +521,13 @@ def _long_only_excerpt_ok(excerpt: str | None) -> bool:
     if not excerpt:
         return False
     lower = excerpt.lower()
+    compact = lower.replace(" ", "")
     return (
-        "forbidden" in lower
+        "sigma_star/rv_21" in compact
+        and "w_exec" in lower
         and "1.0" in excerpt
         and "short" in lower
-        and "leverage" in lower
+        and "forbidden" in lower
     )
 
 

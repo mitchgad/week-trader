@@ -1,8 +1,8 @@
 {
-  "_state_hash": "85b5f8b7066517c89efc047a69748385d2af3d6152e2e1c2c7a2f368ea0fd6da",
+  "_state_hash": "bb242be41bdf2b34120bd2daae14e188b95b0b154bc687bcfb3e33b40aec408a",
   "fields": {
     "artifact_hashes": {
-      "HYPOTHESIS.md": "fb6962db35ffc92b79810d6d8cc7dabf321ed8d3f4744c7bac31658a41f380c1",
+      "HYPOTHESIS.md": "b52b37e6111bf1a620cd675c177da91533ceb18e567f98078723200cd0fd236f",
       "data_manifest": "65fc499871f72a3854681a8f71eaa1d2b0cd596b723ac1abb2897437487b276d",
       "data_manifest_id": "iwm-vol-overlay-1d-alpaca",
       "preregistration.json": "e1d43c17c5b1bce24bbb6295d3ba422dab7dd1943d252bfb27a65f3399517682"
@@ -15,7 +15,7 @@
     "forbidden_perp_funding_proof_in_prereg": true,
     "forward_monitor_age_hours": null,
     "forward_monitor_present": false,
-    "freeze_manifest_hash": "01bfa84825531b50efaedcb340cea194e5aeeb6c506b7fe93f4a132064f9ec72",
+    "freeze_manifest_hash": "d2dcd8d9a8047f183d95abcd396f4239274ee8ba21c7fa5b83739569ad3d6bf9",
     "gate": "spec",
     "halt_absent": true,
     "halt_reason_resolved": false,

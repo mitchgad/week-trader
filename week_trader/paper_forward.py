@@ -177,12 +177,13 @@ IWM_MOM_LONG_OFFSET = 252
 IWM_MOM_SKIP_RECENT = 21
 IWM_RV_WINDOW = 21
 IWM_SIGMA_STAR = 0.10
+IWM_RV_FLOOR = 0.01
 IWM_DUST_WEIGHT = 0.05
 
 
 def evaluate_iwm_vol_overlay_signal(closes: list[float], *, hypothesis_id: str) -> dict[str, Any]:
     """
-    Daily IWM vol-managed long-only overlay (Moreira-Muir style cap at 1.0).
+    Daily IWM vol-managed overlay: Moreira-Muir w_t = sigma_star / rv (long-only base).
     """
     min_needed = IWM_MOM_LONG_OFFSET + IWM_MOM_SKIP_RECENT + 2
     if len(closes) < min_needed:
@@ -202,18 +203,19 @@ def evaluate_iwm_vol_overlay_signal(closes: list[float], *, hypothesis_id: str) 
     rv_21 = math.sqrt(var) * math.sqrt(252.0)
     target_weight = 0.0
     if base_long:
-        if rv_21 <= 1e-8:
-            target_weight = 1.0
-        else:
-            target_weight = min(1.0, max(0.0, IWM_SIGMA_STAR / rv_21))
-    side = "long" if target_weight >= IWM_DUST_WEIGHT else "flat"
+        rv_eff = max(rv_21, IWM_RV_FLOOR)
+        target_weight = max(0.0, IWM_SIGMA_STAR / rv_eff)
+    exec_weight = min(target_weight, 1.0)
+    side = "long" if exec_weight >= IWM_DUST_WEIGHT else "flat"
     return {
         "strategy": hypothesis_id,
         "side": side,
         "target_weight": target_weight,
+        "exec_weight": exec_weight,
         "base_long": base_long,
         "mom_12_1": mom_12_1,
         "rv_21_annualized": rv_21,
+        "rv_floor": IWM_RV_FLOOR,
         "sigma_star": IWM_SIGMA_STAR,
         "last_close": closes[-1],
     }
