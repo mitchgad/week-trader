@@ -2,7 +2,13 @@
 
 **Family:** Volatility-managed **long-only overlay** on a **slow** time-series momentum base for **IWM** (US Russell 2000 ETF), daily bars — not crypto TSMOM, not pairs, not perp carry.
 
-## C7 sketch → frozen spec
+## Status — dropped
+
+**Hypothesis id:** `iwm-vol-overlay-1d` · **Dropped** 2026-11-01 on branch `cursor/iwm-vol-overlay-1d-12eb` ([PR #26](https://github.com/mitchgad/week-trader/pull/26)).
+
+Moreira & Muir ([DOI 10.1111/jofi.12513](https://doi.org/10.1111/jofi.12513)) weight is **σ*/realized vol**; the shared Alpaca **paper account caps execution at 1.0× the strategy slice** (5000 USD). After the signal was changed to that weight, Jev **`vol_overlay_long_only_honest`** fell from **0.61** to **0.59** (spec bar 0.65). That is the drop. **No paper-forward, no order.** Signed spec gate logs stay in `gates/iwm-vol-overlay-1d/`.
+
+## C7 sketch → frozen spec (archived)
 
 | Layer | Source | Role in spec |
 |-------|--------|----------------|
@@ -12,7 +18,7 @@
 
 **Why IWM:** Liquid US small-cap ETF with daily Alpaca equity data; distinct symbol owner from BTC/ETH on the shared paper account.
 
-**Why not parked:** Implementable on Alpaca paper with free daily bars — no short, no paid data, no live endpoint; Moreira **`w_t > 1`** uses **Reg-T margin within paper buying power**, bounded by the **5000 USD** slice at execution.
+**Why not parked:** Was implementable on Alpaca paper without short, paid data, or live endpoints — dropped instead after spec gate (see **Status — dropped**).
 
 ## Limits (not literature-settled)
 
