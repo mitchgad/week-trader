@@ -1,0 +1,10 @@
+{
+  "_note": "Term carry short SHY leg when spread z >= entry.",
+  "paper_api_host": "https://paper-api.alpaca.markets",
+  "qty": "58",
+  "reference_price_usd": 82.0,
+  "side": "sell",
+  "symbol": "SHY",
+  "time_in_force": "gtc",
+  "type": "market"
+}

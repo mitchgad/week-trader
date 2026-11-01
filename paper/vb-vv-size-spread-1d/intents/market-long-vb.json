@@ -1,0 +1,10 @@
+{
+  "_note": "Size spread long VB leg when VB return > VV.",
+  "paper_api_host": "https://paper-api.alpaca.markets",
+  "qty": "22",
+  "reference_price_usd": 210.0,
+  "side": "buy",
+  "symbol": "VB",
+  "time_in_force": "gtc",
+  "type": "market"
+}

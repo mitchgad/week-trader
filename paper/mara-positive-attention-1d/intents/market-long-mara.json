@@ -1,0 +1,10 @@
+{
+  "_note": "Long-only MARA positive-attention; slice max 5000 USD.",
+  "paper_api_host": "https://paper-api.alpaca.markets",
+  "qty": "300",
+  "reference_price_usd": 15.0,
+  "side": "buy",
+  "symbol": "MARA",
+  "time_in_force": "gtc",
+  "type": "market"
+}

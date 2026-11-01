@@ -1,0 +1,10 @@
+{
+  "_note": "Long-only SPY TSMOM; slice max 5000 USD via config/paper_guards/spy-equity-tsmom-1d.json.",
+  "paper_api_host": "https://paper-api.alpaca.markets",
+  "qty": "8",
+  "reference_price_usd": 550.0,
+  "side": "buy",
+  "symbol": "SPY",
+  "time_in_force": "gtc",
+  "type": "market"
+}

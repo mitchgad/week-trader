@@ -1,0 +1,10 @@
+{
+  "_note": "Long-only alt CSMOM when SOL/USD wins cross-section.",
+  "paper_api_host": "https://paper-api.alpaca.markets",
+  "qty": "25",
+  "reference_price_usd": 180.0,
+  "side": "buy",
+  "symbol": "SOLUSD",
+  "time_in_force": "gtc",
+  "type": "market"
+}

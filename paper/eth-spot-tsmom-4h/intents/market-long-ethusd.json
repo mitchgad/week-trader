@@ -1,0 +1,10 @@
+{
+  "_note": "Long-only ETH spot TSMOM; slice max 2500 USD via paper_account_guards.json.",
+  "paper_api_host": "https://paper-api.alpaca.markets",
+  "qty": "0.5",
+  "reference_price_usd": 3500.0,
+  "side": "buy",
+  "symbol": "ETHUSD",
+  "time_in_force": "gtc",
+  "type": "market"
+}

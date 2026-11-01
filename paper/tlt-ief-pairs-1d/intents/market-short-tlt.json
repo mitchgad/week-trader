@@ -1,0 +1,10 @@
+{
+  "_note": "Pairs short TLT leg when spread signals rich IEF.",
+  "paper_api_host": "https://paper-api.alpaca.markets",
+  "qty": "50",
+  "reference_price_usd": 90.0,
+  "side": "sell",
+  "symbol": "TLT",
+  "time_in_force": "gtc",
+  "type": "market"
+}

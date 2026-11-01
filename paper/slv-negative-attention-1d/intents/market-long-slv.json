@@ -1,0 +1,10 @@
+{
+  "_note": "Long-only SLV negative-attention; slice max 5000 USD.",
+  "paper_api_host": "https://paper-api.alpaca.markets",
+  "qty": "170",
+  "reference_price_usd": 28.0,
+  "side": "buy",
+  "symbol": "SLV",
+  "time_in_force": "gtc",
+  "type": "market"
+}
