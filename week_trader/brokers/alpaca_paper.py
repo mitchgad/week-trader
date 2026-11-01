@@ -12,6 +12,7 @@ DATA_ALPACA_NETLOC = "data.alpaca.markets"
 DEFAULT_PAPER_BASE_URL = f"https://{PAPER_ALPACA_NETLOC}"
 DEFAULT_DATA_BASE_URL = f"https://{DATA_ALPACA_NETLOC}"
 CRYPTO_4H_TIMEFRAME = "4Hour"
+EQUITY_1D_TIMEFRAME = "1Day"
 
 
 class AlpacaPaperError(Exception):
@@ -223,9 +224,6 @@ def fetch_crypto_4h_bar_closes(
     return closes
 
 
-EQUITY_1D_TIMEFRAME = "1Day"
-
-
 def fetch_equity_daily_bar_closes(
     symbol: str,
     *,
@@ -236,9 +234,10 @@ def fetch_equity_daily_bar_closes(
     """Completed 1Day US equity bar closes from Alpaca market data."""
     if min_bars < 2:
         raise AlpacaPaperError("min_bars must be at least 2")
+    normalized = symbol.strip().upper()
     start = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).strftime("%Y-%m-%dT%H:%M:%SZ")
     params = {
-        "symbols": symbol,
+        "symbols": normalized,
         "timeframe": EQUITY_1D_TIMEFRAME,
         "start": start,
         "limit": "10000",
@@ -257,9 +256,11 @@ def fetch_equity_daily_bar_closes(
     bars_root = payload.get("bars")
     if not isinstance(bars_root, dict):
         raise AlpacaPaperError("Alpaca equity bars missing bars object — fail closed")
-    series = bars_root.get(symbol)
+    series = bars_root.get(normalized)
     if not isinstance(series, list):
-        raise AlpacaPaperError(f"Alpaca equity bars missing series for {symbol!r} — fail closed")
+        series = bars_root.get(symbol)
+    if not isinstance(series, list):
+        raise AlpacaPaperError(f"Alpaca equity bars missing series for {normalized!r} — fail closed")
     closes: list[float] = []
     for bar in series:
         if not isinstance(bar, dict):
