@@ -8,6 +8,7 @@ import pytest
 from week_trader.paper_forward import (
     PaperForwardError,
     append_forward_event,
+    build_paper_account_book,
     evaluate_tsmom_4h_signal,
     forward_dir,
     register_pending_order,
@@ -44,10 +45,18 @@ def test_forward_monitor_syncs_fills(monkeypatch: pytest.MonkeyPatch, tmp_path: 
     register_pending_order(hypothesis_id, "ord-2", {"order_intent_id": "i2"})
 
     def fake_account() -> dict[str, object]:
-        return {"equity": "10000", "cash": "5000", "last_equity": "9900"}
+        return {
+            "equity": "10000",
+            "cash": "5000",
+            "last_equity": "9900",
+            "buying_power": "5000",
+        }
 
     def fake_positions() -> list[dict[str, object]]:
         return [{"symbol": "BTCUSD", "unrealized_pl": "12.5"}]
+
+    def fake_open_orders() -> list[dict[str, object]]:
+        return []
 
     def fake_order(order_id: str) -> dict[str, object]:
         if order_id == "ord-1":
@@ -64,6 +73,7 @@ def test_forward_monitor_syncs_fills(monkeypatch: pytest.MonkeyPatch, tmp_path: 
         hypothesis_id,
         fetch_account=fake_account,
         fetch_positions=fake_positions,
+        fetch_open_orders=fake_open_orders,
         fetch_order=fake_order,
     )
     assert result["fills_synced_this_tick"] == 2
@@ -75,6 +85,19 @@ def test_forward_monitor_syncs_fills(monkeypatch: pytest.MonkeyPatch, tmp_path: 
     assert "fill" in types
     pending = json.loads((events_path / "pending_orders.json").read_text(encoding="utf-8"))
     assert pending == {}
+
+
+def test_build_paper_account_book_summarizes_positions_and_orders() -> None:
+    book = build_paper_account_book(
+        {"equity": "100000", "cash": "50000", "buying_power": "75000", "last_equity": "100000"},
+        [{"symbol": "BTCUSD", "qty": "0.01", "market_value": "400", "side": "long"}],
+        [{"id": "ord-1", "symbol": "BTCUSD", "side": "buy", "qty": "0.001", "status": "new"}],
+        synced_utc="2026-11-01T00:00:00Z",
+    )
+    assert book["source"] == "alpaca_paper"
+    assert book["open_order_count"] == 1
+    assert book["position_count"] == 1
+    assert book["buying_power"] == 75000.0
 
 
 def test_forward_monitor_halt_blocks(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

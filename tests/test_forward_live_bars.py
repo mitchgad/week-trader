@@ -113,19 +113,30 @@ def test_monitor_with_alerts_includes_severity(monkeypatch: pytest.MonkeyPatch, 
     monkeypatch.setattr("week_trader.forward_anomalies.repo_root", lambda: tmp_path)
 
     def fake_account() -> dict[str, object]:
-        return {"equity": "10000", "cash": "5000", "last_equity": "9900"}
+        return {
+            "equity": "10000",
+            "cash": "5000",
+            "last_equity": "9900",
+            "buying_power": "5000",
+        }
 
     def fake_positions() -> list[dict[str, object]]:
+        return []
+
+    def fake_open_orders() -> list[dict[str, object]]:
         return []
 
     result = run_forward_monitor_with_alerts(
         "_template",
         fetch_account=fake_account,
         fetch_positions=fake_positions,
+        fetch_open_orders=fake_open_orders,
         fetch_order=lambda _oid: {"status": "canceled"},
     )
     assert "anomaly_severity" in result
     assert result["validation_mode"] == "forward_paper_only"
+    assert result["open_order_count"] == 0
+    assert result["account_book"]["source"] == "alpaca_paper"
 
 
 def test_manifest_crypto_symbol_requires_4h(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

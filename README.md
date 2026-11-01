@@ -52,7 +52,7 @@ paper-forward ID=btc-spot-tsmom-4h ACTION=alerts
 
 Events append to `paper/<id>/forward/events.jsonl`; latest snapshot in `status.json`; anomaly report in `alerts.json`.
 
-`build-jev-state ID=<hypothesis> GATE=<gate>` includes prereg spec fields and, when present, forward monitor snapshots (`data_fresh`, `within_risk_bands`, `last_signal_side`) for human Jev review — it does not call TypeSafe.
+`build-jev-state ID=<hypothesis> GATE=<gate>` includes prereg spec fields and, when present, forward monitor snapshots (`data_fresh`, `within_risk_bands`, Alpaca paper `account_book` — equity, buying power, positions, open orders — and `last_signal_side`) for human Jev review — it does not call TypeSafe.
 
 ## Quick start
 
