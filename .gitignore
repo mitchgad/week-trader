@@ -15,6 +15,7 @@ gates/*/
 !gates/gate4-checklist.yaml
 !gates/btc-spot-tsmom-4h/
 !gates/eth-spot-tsmom-4h/
+!gates/iwm-vol-overlay-1d/
 backtests/*/
 !backtests/.gitkeep
 !backtests/btc-spot-tsmom-4h/

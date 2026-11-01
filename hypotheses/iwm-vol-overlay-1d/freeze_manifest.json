@@ -1,0 +1,14 @@
+{
+  "artifacts": {
+    "HYPOTHESIS.md": "sha256:fb6962db35ffc92b79810d6d8cc7dabf321ed8d3f4744c7bac31658a41f380c1",
+    "data_manifest": {
+      "path": "data/manifests/iwm-vol-overlay-1d-alpaca.yaml",
+      "sha256": "sha256:65fc499871f72a3854681a8f71eaa1d2b0cd596b723ac1abb2897437487b276d"
+    },
+    "preregistration.json": "sha256:e1d43c17c5b1bce24bbb6295d3ba422dab7dd1943d252bfb27a65f3399517682"
+  },
+  "description": "Bind HYPOTHESIS.md, full preregistration.json, and data manifest before backtest or Jev.",
+  "frozen_at_utc": "2026-11-01T02:08:00Z",
+  "hypothesis_id": "iwm-vol-overlay-1d",
+  "schema_version": 1
+}

@@ -9,6 +9,7 @@ from typing import Any, Callable
 from week_trader.brokers.alpaca_paper import (
     AlpacaPaperError,
     fetch_crypto_4h_bar_closes,
+    fetch_equity_daily_bar_closes,
     fetch_paper_account,
     fetch_paper_open_orders,
     fetch_paper_order,
@@ -70,7 +71,20 @@ def record_signal(hypothesis_id: str, signal: dict[str, Any]) -> dict[str, Any]:
     return {"recorded": True, "signal": signal}
 
 
-def manifest_crypto_symbol(hypothesis_id: str) -> str:
+def manifest_bars_interval(hypothesis_id: str) -> str:
+    prereg = load_preregistration(hypothesis_id)
+    manifest_path = resolve_manifest_for_hypothesis(hypothesis_id, prereg)
+    manifest = load_data_manifest(manifest_path)
+    bars = manifest.get("bars")
+    if not isinstance(bars, dict):
+        raise PaperForwardError("manifest bars missing")
+    interval = bars.get("interval")
+    if not isinstance(interval, str) or not interval.strip():
+        raise PaperForwardError("manifest bars.interval missing")
+    return interval.strip()
+
+
+def manifest_primary_symbol(hypothesis_id: str) -> str:
     prereg = load_preregistration(hypothesis_id)
     manifest_path = resolve_manifest_for_hypothesis(hypothesis_id, prereg)
     manifest = load_data_manifest(manifest_path)
@@ -83,10 +97,14 @@ def manifest_crypto_symbol(hypothesis_id: str) -> str:
     symbol = symbols[0]
     if not isinstance(symbol, str) or not symbol.strip():
         raise PaperForwardError("manifest symbol invalid")
-    bars = manifest.get("bars")
-    if isinstance(bars, dict) and bars.get("interval") != "4h":
-        raise PaperForwardError("live 4h fetch requires manifest bars.interval 4h")
     return symbol.strip()
+
+
+def manifest_crypto_symbol(hypothesis_id: str) -> str:
+    symbol = manifest_primary_symbol(hypothesis_id)
+    if manifest_bars_interval(hypothesis_id) != "4h":
+        raise PaperForwardError("live 4h fetch requires manifest bars.interval 4h")
+    return symbol
 
 
 def fetch_live_4h_closes(hypothesis_id: str, *, min_bars: int = 8) -> list[float]:
@@ -97,11 +115,38 @@ def fetch_live_4h_closes(hypothesis_id: str, *, min_bars: int = 8) -> list[float
         raise PaperForwardError(str(exc)) from exc
 
 
+def fetch_live_daily_closes(hypothesis_id: str, *, min_bars: int = 280) -> list[float]:
+    symbol = manifest_primary_symbol(hypothesis_id)
+    if manifest_bars_interval(hypothesis_id) != "1d":
+        raise PaperForwardError("live daily fetch requires manifest bars.interval 1d")
+    try:
+        return fetch_equity_daily_bar_closes(symbol, min_bars=min_bars)
+    except AlpacaPaperError as exc:
+        raise PaperForwardError(str(exc)) from exc
+
+
+def evaluate_forward_signal(closes: list[float], *, hypothesis_id: str) -> dict[str, Any]:
+    interval = manifest_bars_interval(hypothesis_id)
+    if interval == "4h":
+        return evaluate_tsmom_4h_signal(closes, hypothesis_id=hypothesis_id)
+    if interval == "1d":
+        return evaluate_iwm_vol_overlay_signal(closes, hypothesis_id=hypothesis_id)
+    raise PaperForwardError(f"unsupported manifest bars.interval {interval!r} for forward signal")
+
+
 def record_signal_from_live_bars(hypothesis_id: str) -> dict[str, Any]:
-    symbol = manifest_crypto_symbol(hypothesis_id)
-    closes = fetch_live_4h_closes(hypothesis_id)
-    signal = evaluate_tsmom_4h_signal(closes, hypothesis_id=hypothesis_id)
-    signal["closes_source"] = "alpaca_live_4h"
+    symbol = manifest_primary_symbol(hypothesis_id)
+    interval = manifest_bars_interval(hypothesis_id)
+    if interval == "4h":
+        closes = fetch_live_4h_closes(hypothesis_id)
+        source = "alpaca_live_4h"
+    elif interval == "1d":
+        closes = fetch_live_daily_closes(hypothesis_id)
+        source = "alpaca_live_1d"
+    else:
+        raise PaperForwardError(f"unsupported manifest bars.interval {interval!r}")
+    signal = evaluate_forward_signal(closes, hypothesis_id=hypothesis_id)
+    signal["closes_source"] = source
     signal["symbol"] = symbol
     signal["bar_count"] = len(closes)
     return record_signal(hypothesis_id, signal)
@@ -123,6 +168,53 @@ def evaluate_tsmom_4h_signal(closes: list[float], *, hypothesis_id: str) -> dict
         "formation_bars": formation_bars,
         "formation_log_return": formation_log_return,
         "side": side,
+        "last_close": closes[-1],
+    }
+
+
+IWM_VOL_MIN_CLOSES = 280
+IWM_MOM_LONG_OFFSET = 252
+IWM_MOM_SKIP_RECENT = 21
+IWM_RV_WINDOW = 21
+IWM_SIGMA_STAR = 0.10
+IWM_DUST_WEIGHT = 0.05
+
+
+def evaluate_iwm_vol_overlay_signal(closes: list[float], *, hypothesis_id: str) -> dict[str, Any]:
+    """
+    Daily IWM vol-managed long-only overlay (Moreira-Muir style cap at 1.0).
+    """
+    min_needed = IWM_MOM_LONG_OFFSET + IWM_MOM_SKIP_RECENT + 2
+    if len(closes) < min_needed:
+        raise PaperForwardError(
+            f"need at least {min_needed} daily closes for iwm vol overlay; got {len(closes)}"
+        )
+    mom_12_1 = math.log(closes[-1 - IWM_MOM_SKIP_RECENT] / closes[-1 - IWM_MOM_LONG_OFFSET])
+    base_long = mom_12_1 > 0.0
+    rv_window = closes[-(IWM_RV_WINDOW + 1) :]
+    daily_logs = [
+        math.log(rv_window[i] / rv_window[i - 1]) for i in range(1, len(rv_window))
+    ]
+    if len(daily_logs) < IWM_RV_WINDOW:
+        raise PaperForwardError("insufficient daily returns for realized vol")
+    mean = sum(daily_logs) / len(daily_logs)
+    var = sum((x - mean) ** 2 for x in daily_logs) / max(len(daily_logs) - 1, 1)
+    rv_21 = math.sqrt(var) * math.sqrt(252.0)
+    target_weight = 0.0
+    if base_long:
+        if rv_21 <= 1e-8:
+            target_weight = 1.0
+        else:
+            target_weight = min(1.0, max(0.0, IWM_SIGMA_STAR / rv_21))
+    side = "long" if target_weight >= IWM_DUST_WEIGHT else "flat"
+    return {
+        "strategy": hypothesis_id,
+        "side": side,
+        "target_weight": target_weight,
+        "base_long": base_long,
+        "mom_12_1": mom_12_1,
+        "rv_21_annualized": rv_21,
+        "sigma_star": IWM_SIGMA_STAR,
         "last_close": closes[-1],
     }
 

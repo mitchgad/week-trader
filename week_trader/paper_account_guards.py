@@ -25,6 +25,10 @@ def guards_config_path() -> Path:
     return repo_root() / "paper_account_guards.json"
 
 
+def paper_guards_overlay_dir() -> Path:
+    return repo_root() / "config" / "paper_guards"
+
+
 def load_guards_config() -> dict[str, Any]:
     path = guards_config_path()
     if not path.is_file():
@@ -32,6 +36,26 @@ def load_guards_config() -> dict[str, Any]:
     data = load_json(path)
     if not isinstance(data, dict):
         raise PaperAccountGuardError("paper_account_guards.json must be an object")
+    overlay_dir = paper_guards_overlay_dir()
+    if overlay_dir.is_dir():
+        for overlay_path in sorted(overlay_dir.glob("*.json")):
+            overlay = load_json(overlay_path)
+            if not isinstance(overlay, dict):
+                continue
+            owners = overlay.get("symbol_owners")
+            if isinstance(owners, dict):
+                base_owners = data.setdefault("symbol_owners", {})
+                if isinstance(base_owners, dict):
+                    for key, owner in owners.items():
+                        if isinstance(key, str) and isinstance(owner, str):
+                            base_owners[key] = owner
+            slices = overlay.get("strategy_slices")
+            if isinstance(slices, dict):
+                base_slices = data.setdefault("strategy_slices", {})
+                if isinstance(base_slices, dict):
+                    for hypothesis_id, entry in slices.items():
+                        if isinstance(hypothesis_id, str) and isinstance(entry, dict):
+                            base_slices[hypothesis_id] = entry
     return data
 
 
