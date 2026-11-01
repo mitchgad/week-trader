@@ -54,7 +54,7 @@ def build_jev_state(hypothesis_id: str, *, gate: str, metrics_path: Path | None 
         else forward_ops.get("within_risk_bands", False)
     )
     account_book_fields = _paper_account_book_fields(forward_ops.get("account_book"))
-    trade_fields = _trade_gate_fields(hypothesis_id, gate, forward_ops) if gate == "trade" else {}
+    trade_fields = _trade_gate_fields(hypothesis_id, gate) if gate == "trade" else {}
 
     fields: dict[str, Any] = {
         "hypothesis_id": hypothesis_id,
@@ -297,7 +297,7 @@ def _paper_account_book_fields(account_book: Any) -> dict[str, Any]:
     }
 
 
-def _trade_gate_fields(hypothesis_id: str, gate: str, forward_ops: dict[str, Any]) -> dict[str, Any]:
+def _trade_gate_fields(hypothesis_id: str, gate: str) -> dict[str, Any]:
     if gate != "trade":
         return {}
     intent_path = repo_root() / "paper" / hypothesis_id / "intents" / "market-long-btcusd.json"
