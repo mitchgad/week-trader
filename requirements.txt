@@ -1,5 +1,6 @@
 ccxt>=4.0
 pandas>=2.0
+pytrends>=4.9.2
 quantstats>=0.0.62
 pyyaml>=6.0
 requests>=2.31

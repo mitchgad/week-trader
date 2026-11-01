@@ -10,6 +10,7 @@ from week_trader.brokers.alpaca_paper import (
     AlpacaPaperError,
     fetch_crypto_4h_bar_closes,
     fetch_equity_daily_bar_closes,
+    fetch_equity_daily_closes_volumes,
     fetch_paper_account,
     fetch_paper_open_orders,
     fetch_paper_order,
@@ -18,7 +19,12 @@ from week_trader.brokers.alpaca_paper import (
 from week_trader.attention.google_trends import GoogleTrendsError, fetch_daily_interest_pair
 from week_trader.manifest import load_data_manifest, resolve_manifest_for_hypothesis
 from week_trader.prereg import load_preregistration
+from week_trader.strategies.coin_positive_attention_1d import evaluate_positive_attention_1d
 from week_trader.strategies.gld_negative_attention_1d import evaluate_gld_negative_attention_1d
+from week_trader.strategies.qqq_volume_confirm_1d import evaluate_qqq_volume_confirm_1d
+from week_trader.strategies.size_spread_pairs_1d import evaluate_vb_vv_size_spread_1d
+from week_trader.strategies.term_carry_pairs_1d import evaluate_vgit_shy_term_carry_1d
+from week_trader.strategies.xbi_max_short_1d import evaluate_xbi_max_short_1d
 from week_trader.util import load_json, repo_root
 
 
@@ -144,6 +150,17 @@ def fetch_live_4h_closes(hypothesis_id: str, *, min_bars: int = 8) -> list[float
         raise PaperForwardError(str(exc)) from exc
 
 
+def fetch_live_crypto_4h_closes_map(hypothesis_id: str, *, min_bars: int = 8) -> dict[str, list[float]]:
+    symbols = manifest_universe_symbols(hypothesis_id)
+    closes_map: dict[str, list[float]] = {}
+    try:
+        for symbol in symbols:
+            closes_map[symbol] = fetch_crypto_4h_bar_closes(symbol, min_bars=min_bars)
+    except AlpacaPaperError as exc:
+        raise PaperForwardError(str(exc)) from exc
+    return closes_map
+
+
 def fetch_live_equity_daily_closes(hypothesis_id: str, *, min_bars: int = 130) -> list[float]:
     symbol = manifest_trading_symbol(hypothesis_id)
     if manifest_bar_interval(hypothesis_id) != "1Day":
@@ -161,13 +178,51 @@ def record_signal_from_live_bars(hypothesis_id: str) -> dict[str, Any]:
     attention = manifest.get("attention")
     if isinstance(attention, dict) and attention.get("vendor") == "google_trends_free":
         if attention.get("mode") == "positive_ratio":
-            raise PaperForwardError("positive_ratio attention not enabled in v1 forward loop")
+            return record_positive_attention_live_signal(hypothesis_id, manifest)
         return record_negative_attention_live_signal(hypothesis_id, manifest)
     interval = manifest_bar_interval(hypothesis_id)
+    if interval == "1Day" and hypothesis_id == "qqq-volume-confirm-1d":
+        try:
+            closes, volumes = fetch_equity_daily_closes_volumes("QQQ", min_bars=25)
+        except AlpacaPaperError as exc:
+            raise PaperForwardError(str(exc)) from exc
+        signal = evaluate_qqq_volume_confirm_1d(
+            closes, volumes, hypothesis_id=hypothesis_id
+        )
+        signal["closes_source"] = "alpaca_live_1d_volume"
+        signal["bar_count"] = len(closes)
+        return record_signal(hypothesis_id, signal)
+    if interval == "1Day" and hypothesis_id == "vgit-shy-term-carry-1d":
+        closes_map = fetch_live_equity_daily_closes_map(hypothesis_id)
+        signal = evaluate_vgit_shy_term_carry_1d(closes_map, hypothesis_id=hypothesis_id)
+        signal["closes_source"] = "alpaca_live_1d"
+        signal["symbols"] = list(closes_map.keys())
+        signal["bar_count"] = min(len(v) for v in closes_map.values())
+        return record_signal(hypothesis_id, signal)
+    if interval == "1Day" and hypothesis_id == "vb-vv-size-spread-1d":
+        closes_map = fetch_live_equity_daily_closes_map(hypothesis_id)
+        signal = evaluate_vb_vv_size_spread_1d(closes_map, hypothesis_id=hypothesis_id)
+        signal["closes_source"] = "alpaca_live_1d"
+        signal["symbols"] = list(closes_map.keys())
+        signal["bar_count"] = min(len(v) for v in closes_map.values())
+        return record_signal(hypothesis_id, signal)
+    if interval == "1Day" and hypothesis_id == "xbi-max-short-1d":
+        closes = fetch_live_equity_daily_closes(hypothesis_id, min_bars=274)
+        signal = evaluate_xbi_max_short_1d(closes, hypothesis_id=hypothesis_id)
+        signal["closes_source"] = "alpaca_live_1d"
+        signal["bar_count"] = len(closes)
+        return record_signal(hypothesis_id, signal)
     if interval == "1Day" and hypothesis_id.endswith("-csmom-1d"):
         closes_map = fetch_live_equity_daily_closes_map(hypothesis_id)
         signal = evaluate_eem_xlf_csmom_1d_signal(closes_map, hypothesis_id=hypothesis_id)
         signal["closes_source"] = "alpaca_live_1d"
+        signal["symbols"] = list(closes_map.keys())
+        signal["bar_count"] = min(len(v) for v in closes_map.values())
+        return record_signal(hypothesis_id, signal)
+    if interval == "4h" and hypothesis_id == "crypto-alts-csmom-4h":
+        closes_map = fetch_live_crypto_4h_closes_map(hypothesis_id)
+        signal = evaluate_crypto_alts_csmom_4h_signal(closes_map, hypothesis_id=hypothesis_id)
+        signal["closes_source"] = "alpaca_live_4h"
         signal["symbols"] = list(closes_map.keys())
         signal["bar_count"] = min(len(v) for v in closes_map.values())
         return record_signal(hypothesis_id, signal)
@@ -231,6 +286,39 @@ def record_gld_negative_attention_live_signal(
     hypothesis_id: str, manifest: dict[str, Any]
 ) -> dict[str, Any]:
     return record_negative_attention_live_signal(hypothesis_id, manifest)
+
+
+def record_positive_attention_live_signal(
+    hypothesis_id: str, manifest: dict[str, Any]
+) -> dict[str, Any]:
+    attention = manifest.get("attention")
+    if not isinstance(attention, dict):
+        raise PaperForwardError("manifest attention block required")
+    positive_kw = attention.get("positive_keyword")
+    baseline_kw = attention.get("baseline_keyword")
+    if not isinstance(positive_kw, str) or not isinstance(baseline_kw, str):
+        raise PaperForwardError("manifest positive attention keywords required")
+    lookback_rows = int(attention.get("lookback_rows", 252))
+    high_q = float(attention.get("high_ratio_quantile", 0.8))
+    symbol = _manifest_primary_symbol(manifest)
+    try:
+        trend_rows = fetch_daily_interest_pair(positive_kw, baseline_kw)
+        daily_closes = fetch_equity_daily_bar_closes(symbol, min_bars=2)
+    except (GoogleTrendsError, AlpacaPaperError) as exc:
+        raise PaperForwardError(str(exc)) from exc
+    signal = evaluate_positive_attention_1d(
+        trend_rows,
+        hypothesis_id=hypothesis_id,
+        symbol=symbol,
+        lookback_rows=lookback_rows,
+        high_ratio_quantile=high_q,
+        positive_keyword=positive_kw,
+        baseline_keyword=baseline_kw,
+    )
+    signal["closes_source"] = "google_trends_free_plus_alpaca_live_1d"
+    signal["last_close"] = daily_closes[-1]
+    signal["bar_count"] = len(daily_closes)
+    return record_signal(hypothesis_id, signal)
 
 
 def _manifest_primary_symbol(manifest: dict[str, Any]) -> str:
@@ -309,6 +397,32 @@ def evaluate_eem_xlf_csmom_1d_signal(
         "formation_returns": returns,
         "side": "long",
         "target_symbol": winner,
+        "last_closes": {sym: closes_by_symbol[sym][-1] for sym in closes_by_symbol},
+    }
+
+
+def evaluate_crypto_alts_csmom_4h_signal(
+    closes_by_symbol: dict[str, list[float]], *, hypothesis_id: str
+) -> dict[str, Any]:
+    """Long-only cross-sectional momentum on Alpaca crypto spot alts (4h bars)."""
+    formation_bars = 6
+    returns: dict[str, float] = {}
+    for symbol, closes in closes_by_symbol.items():
+        if len(closes) < formation_bars + 1:
+            raise PaperForwardError(f"need {formation_bars + 1} 4h closes for {symbol}")
+        window = closes[-(formation_bars + 1) : -1]
+        if any(window[i] <= 0 for i in range(len(window))):
+            raise PaperForwardError(f"invalid close for {symbol}")
+        log_ret = sum(math.log(window[i] / window[i - 1]) for i in range(1, len(window)))
+        returns[symbol.upper()] = log_ret
+    winner = max(returns, key=returns.get)
+    return {
+        "strategy": hypothesis_id,
+        "formation_bars": formation_bars,
+        "formation_log_returns": returns,
+        "side": "long",
+        "target_symbol": winner,
+        "signal_family": "crypto_cross_section_momentum",
         "last_closes": {sym: closes_by_symbol[sym][-1] for sym in closes_by_symbol},
     }
 

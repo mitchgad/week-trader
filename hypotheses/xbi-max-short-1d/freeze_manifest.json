@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "xbi-max-short-1d",
+  "description": "Bind HYPOTHESIS.md, full preregistration.json, and data manifest before backtest or Jev.",
+  "frozen_at_utc": "2026-11-01T02:33:27Z",
+  "artifacts": {
+    "HYPOTHESIS.md": "sha256:16ac1fb64d82cf65675be037ed3021370239e88d50f657091c28521f61a25584",
+    "preregistration.json": "sha256:9ac56f38d07dae5ff3498cd5abb367f8315823d64d4f1ab931a246502754ec0e",
+    "data_manifest": {
+      "path": "data/manifests/xbi-max-short-1d-alpaca.yaml",
+      "sha256": "sha256:8c732841bb66929bebcc4fd2989466dab0984277eb3f1fa19eba03e6bd4dc8b3"
+    }
+  }
+}

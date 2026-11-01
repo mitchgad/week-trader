@@ -224,6 +224,62 @@ def fetch_crypto_4h_bar_closes(
     return closes
 
 
+def fetch_equity_daily_closes_volumes(
+    symbol: str,
+    *,
+    min_bars: int = 25,
+    lookback_days: int = 400,
+    http_get: HttpGet | None = None,
+) -> tuple[list[float], list[float]]:
+    """Daily equity closes and share volumes (Campbell et al. volume–return tests)."""
+    if min_bars < 2:
+        raise AlpacaPaperError("min_bars must be at least 2")
+    normalized = symbol.strip().upper()
+    start = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    params = {
+        "symbols": normalized,
+        "timeframe": EQUITY_1D_TIMEFRAME,
+        "start": start,
+        "limit": "10000",
+        "sort": "asc",
+        "adjustment": "split",
+    }
+    payload = alpaca_paper_request(
+        "GET",
+        "/v2/stocks/bars",
+        params=params,
+        http_get=http_get,
+        base_url=data_base_url(),
+    )
+    if not isinstance(payload, dict):
+        raise AlpacaPaperError("Alpaca equity bars response must be object — fail closed")
+    bars_root = payload.get("bars")
+    if not isinstance(bars_root, dict):
+        raise AlpacaPaperError("Alpaca equity bars missing bars object — fail closed")
+    series = bars_root.get(normalized)
+    if not isinstance(series, list):
+        raise AlpacaPaperError(f"Alpaca equity bars missing series for {normalized!r} — fail closed")
+    closes: list[float] = []
+    volumes: list[float] = []
+    for bar in series:
+        if not isinstance(bar, dict):
+            continue
+        close = bar.get("c")
+        vol = bar.get("v")
+        if close is None or vol is None:
+            continue
+        try:
+            closes.append(float(close))
+            volumes.append(float(vol))
+        except (TypeError, ValueError) as exc:
+            raise AlpacaPaperError("Alpaca bar fields not numeric — fail closed") from exc
+    if len(closes) < min_bars:
+        raise AlpacaPaperError(
+            f"need at least {min_bars} daily bars for signal; got {len(closes)} — fail closed"
+        )
+    return closes, volumes
+
+
 def fetch_equity_daily_bar_closes(
     symbol: str,
     *,

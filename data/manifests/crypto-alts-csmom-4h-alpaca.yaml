@@ -1,0 +1,23 @@
+manifest_version: 1
+dataset_id: crypto-alts-csmom-4h-alpaca
+as_of_utc: "2026-11-01T00:00:00Z"
+universe:
+  point_in_time: true
+  symbols:
+    - SOL/USD
+    - LTC/USD
+    - AVAX/USD
+bars:
+  timezone: UTC
+  interval: 4h
+  signal_bar_close: true
+  order_default: next_bar_open
+instrument_class: crypto_spot
+venue_contract:
+  execution_venue: alpaca_crypto
+  paper_venue: alpaca_paper
+costs:
+  fee_bps_per_side: 10
+  slippage_bps_per_side: 5
+  funding_series_id: null
+  funding_interval_hours: null

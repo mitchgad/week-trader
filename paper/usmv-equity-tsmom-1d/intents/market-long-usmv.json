@@ -1,8 +1,0 @@
-{
-  "symbol": "USMV",
-  "side": "buy",
-  "qty": "48",
-  "type": "market",
-  "time_in_force": "day",
-  "reference_price_usd": 102.93
-}

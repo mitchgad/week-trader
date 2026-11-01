@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "vgit-shy-term-carry-1d",
+  "model_id": "jev-1.14.0",
+  "forbidden_model_ids": [
+    "jev-latest"
+  ],
+  "max_gate_age_minutes": 15,
+  "data_manifest_id": "vgit-shy-term-carry-1d-alpaca",
+  "metrics_schema_version": 1,
+  "trial_count_n": 0,
+  "walk_forward_protocol": "purged_embargo_cv",
+  "thresholds": {
+    "spec_pass_min_probability": 0.65,
+    "backtest_promotion_min_score": 0.55,
+    "trade_gate_min_probability": 0.7,
+    "oos_sharpe_haircut_min": 0.0
+  },
+  "kill_criteria_ref": "algorithms-and-paper-trade.md A.6",
+  "jev_questions": {
+    "spec": [
+      {
+        "id": "spec_falsifiable_vgit_shy_carry",
+        "type": "noul",
+        "text": "Given state.fields.spec_has_universe_and_timing and state.fields.manifest_symbols_match_venue, is the VGIT/SHY term carry spec falsifiable?",
+        "state_keys": [
+          "fields.spec_has_universe_and_timing",
+          "fields.manifest_symbols_match_venue"
+        ]
+      },
+      {
+        "id": "term_carry_two_leg_short",
+        "type": "noul",
+        "text": "Given state.fields.pairs_short_leg_documented and state.fields.horizon_thinness_acknowledged, does the spec require long and short legs on Alpaca paper equities?",
+        "state_keys": [
+          "fields.pairs_short_leg_documented",
+          "fields.horizon_thinness_acknowledged"
+        ]
+      },
+      {
+        "id": "equity_paper_not_perp_pairs",
+        "type": "noul",
+        "text": "Given state.fields.venue_contract_spot_only and state.fields.disconfirmers_documented, does the spec forbid crypto perp proof?",
+        "state_keys": [
+          "fields.venue_contract_spot_only",
+          "fields.disconfirmers_documented"
+        ]
+      }
+    ],
+    "backtest_readiness": [
+      {
+        "id": "timing_no_lookahead",
+        "type": "noul",
+        "text": "Given state.fields.implementation_audit_pass and state.fields.unit_tests_pass, does implementation match spec timing?",
+        "state_keys": [
+          "fields.implementation_audit_pass",
+          "fields.unit_tests_pass"
+        ]
+      },
+      {
+        "id": "cost_manifest_bound",
+        "type": "noul",
+        "text": "Given state.fields.manifest_cost_block_present and state.fields.engine_parity_required, is backtest blocked without costs and parity?",
+        "state_keys": [
+          "fields.manifest_cost_block_present",
+          "fields.engine_parity_required"
+        ]
+      }
+    ],
+    "backtest": [
+      {
+        "id": "oos_meets_prereg",
+        "type": "score",
+        "text": "Given state.metrics.oos_sharpe_haircut and state.metrics.trial_count_n, does OOS justify paper vs preregistration?",
+        "state_keys": [
+          "metrics.oos_sharpe_haircut",
+          "metrics.trial_count_n"
+        ]
+      }
+    ],
+    "trade": [
+      {
+        "id": "operational_ok",
+        "type": "choice",
+        "choices": [
+          "proceed",
+          "block"
+        ],
+        "text": "Given state.fields.data_fresh and state.fields.within_risk_bands and state.fields.halt_absent and state.fields.signal_matches_intent, may code submit this order intent?",
+        "state_keys": [
+          "fields.data_fresh",
+          "fields.within_risk_bands",
+          "fields.halt_absent",
+          "fields.signal_matches_intent"
+        ]
+      }
+    ],
+    "halt_clear": [
+      {
+        "id": "halt_clear_safe",
+        "type": "choice",
+        "choices": [
+          "resume",
+          "stay_halted"
+        ],
+        "text": "Given state.fields.halt_reason_resolved and state.fields.risk_within_limits, is resume authorized?",
+        "state_keys": [
+          "fields.halt_reason_resolved",
+          "fields.risk_within_limits"
+        ]
+      }
+    ]
+  },
+  "venue_contract": {
+    "execution_venue": "alpaca_equities",
+    "paper_venue": "alpaca_paper",
+    "instrument_class": "equity",
+    "allowed_symbols": [
+      "VGIT",
+      "SHY"
+    ]
+  },
+  "proof_contract": {
+    "operational_validation": "alpaca_paper_equity_forward_only",
+    "backtest_metrics_do_not_satisfy_paper_proof": true,
+    "forbidden_promotion_evidence": [
+      "crypto_perp_funding_pnl",
+      "long_only_single_leg_proxy"
+    ],
+    "allowed_operational_proof": [
+      "alpaca_paper_forward_events",
+      "alpaca_equity_order_fills"
+    ],
+    "citations_ref": "docs/intake/vgit-shy-term-carry-1d-research.md"
+  },
+  "engine_parity": {
+    "required_before_promotion": true,
+    "method": "golden_slice_or_second_engine",
+    "max_metric_delta": 0.01
+  }
+}

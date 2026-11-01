@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "mara-positive-attention-1d",
+  "description": "Bind HYPOTHESIS.md, full preregistration.json, and data manifest before backtest or Jev.",
+  "frozen_at_utc": "2026-11-01T02:32:46Z",
+  "artifacts": {
+    "HYPOTHESIS.md": "sha256:74801e6f18233499cec141f2dc9da2c94e2624907ff80b0729f806701fe29162",
+    "preregistration.json": "sha256:d0215b06f3852c9fc6118fb8b7bbfaf874c08df42cbde4ce19259f5e579686a4",
+    "data_manifest": {
+      "path": "data/manifests/mara-positive-attention-1d-alpaca.yaml",
+      "sha256": "sha256:85e5afe8a706b3e3263e722d78258de11e4e1e33b34d69f7765a97aafb7620bf"
+    }
+  }
+}

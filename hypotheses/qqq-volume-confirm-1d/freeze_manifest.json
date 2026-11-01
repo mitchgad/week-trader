@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "qqq-volume-confirm-1d",
+  "description": "Bind HYPOTHESIS.md, full preregistration.json, and data manifest before backtest or Jev.",
+  "frozen_at_utc": "2026-11-01T02:33:27Z",
+  "artifacts": {
+    "HYPOTHESIS.md": "sha256:fe3ec0281debefc92c40822831977627e0d3935e4bfd23bc89917942fbc0b8e2",
+    "preregistration.json": "sha256:cf73f150e7fd2eea06451a1ffbdce856941f05918dc1d6d0a8af9f573f517502",
+    "data_manifest": {
+      "path": "data/manifests/qqq-volume-confirm-1d-alpaca.yaml",
+      "sha256": "sha256:bcec543fa568deaf561f9c6b724633f4e6ece242dc63d3212a1c885a797c7114"
+    }
+  }
+}

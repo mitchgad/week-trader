@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "crypto-alts-csmom-4h",
+  "symbol_owners": {
+    "SOL/USD": "crypto-alts-csmom-4h",
+    "SOLUSD": "crypto-alts-csmom-4h",
+    "LTC/USD": "crypto-alts-csmom-4h",
+    "LTCUSD": "crypto-alts-csmom-4h",
+    "AVAX/USD": "crypto-alts-csmom-4h",
+    "AVAXUSD": "crypto-alts-csmom-4h"
+  },
+  "strategy_slices": {
+    "crypto-alts-csmom-4h": {
+      "max_notional_usd": 5000,
+      "fill_tag": "wt-crypto-alts-csmom-4h"
+    }
+  }
+}

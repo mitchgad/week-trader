@@ -288,6 +288,7 @@ def _proof_contract_fields(prereg: dict[str, Any], hypothesis_id: str) -> dict[s
             proof.get("backtest_metrics_do_not_satisfy_paper_proof")
         ),
         "spec_validation_proof_excerpt": _validation_proof_excerpt(hypothesis_id),
+        "spec_mechanism_excerpt": _mechanism_excerpt(hypothesis_id),
     }
 
 
@@ -316,6 +317,26 @@ def _validation_proof_excerpt(hypothesis_id: str) -> str | None:
     lines = [line.strip() for line in section.splitlines() if line.strip()]
     excerpt = " ".join(lines[:8])
     return excerpt[:800] if excerpt else None
+
+
+def _mechanism_excerpt(hypothesis_id: str) -> str | None:
+    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
+    if not path.is_file():
+        return None
+    text = path.read_text(encoding="utf-8")
+    chunks: list[str] = []
+    for heading in ("## Signal and timing", "## Two-leg execution (Alpaca paper)", "## Universe and horizon"):
+        lower = text.lower()
+        marker = heading.lower()
+        if marker not in lower:
+            continue
+        start = lower.index(marker)
+        end = lower.find("\n## ", start + 1)
+        section = text[start:end if end != -1 else start + 900]
+        lines = [line.strip() for line in section.splitlines() if line.strip()]
+        chunks.append(" ".join(lines[:6]))
+    joined = " ".join(chunks).strip()
+    return joined[:1200] if joined else None
 
 
 def _hypothesis_disconfirmers_ok(hypothesis_id: str) -> bool:
@@ -347,23 +368,31 @@ def _hypothesis_long_only_loser_leg_documented(hypothesis_id: str) -> bool:
 
 
 def _hypothesis_long_only_csmom_documented(hypothesis_id: str) -> bool:
-    if not hypothesis_id.endswith("-csmom-1d"):
-        return False
     path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
     if not path.is_file():
         return False
     text = path.read_text(encoding="utf-8").lower()
+    if hypothesis_id == "crypto-alts-csmom-4h":
+        return "cross-section" in text and "10.1016/j.econlet.2019.108728" in text
+    if not hypothesis_id.endswith("-csmom-1d"):
+        return False
     return "long only" in text and "10.1016/j.jfineco.2012.11.005" in text
 
 
 def _hypothesis_pairs_short_leg_documented(hypothesis_id: str) -> bool:
-    if hypothesis_id != "tlt-ief-pairs-1d":
+    leg_markers: dict[str, tuple[str, ...]] = {
+        "tlt-ief-pairs-1d": ("short", "tlt", "ief"),
+        "vgit-shy-term-carry-1d": ("short", "vgit", "shy"),
+        "vb-vv-size-spread-1d": ("short", "vb", "vv"),
+    }
+    markers = leg_markers.get(hypothesis_id)
+    if markers is None:
         return False
     path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
     if not path.is_file():
         return False
     text = path.read_text(encoding="utf-8").lower()
-    return "short" in text and "tlt" in text and "ief" in text
+    return all(marker in text for marker in markers)
 
 
 def _manifest_symbols_match_prereg(prereg: dict[str, Any], manifest_path: Path | None) -> bool:

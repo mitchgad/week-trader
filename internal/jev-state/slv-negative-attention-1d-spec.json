@@ -1,5 +1,5 @@
 {
-  "_state_hash": "227281b600f643124061b1a9dec9f4455cf200aea0b8a39e1ce32c3a13e3215b",
+  "_state_hash": "5ddd4b12929c53ddb0cc577481137678d7c48f472b42fb35e736f55ddc444250",
   "fields": {
     "artifact_hashes": {
       "HYPOTHESIS.md": "e7c208f5cad4fb0212f35a25b43d49e0a2cfd80920bb046d8e3beb8ba70aceb7",
@@ -15,10 +15,10 @@
     "disconfirmers_documented": true,
     "engine_parity_required": false,
     "forbidden_perp_funding_proof_in_prereg": true,
-    "forward_monitor_age_hours": 0.015820096111111112,
+    "forward_monitor_age_hours": 0.09071492083333334,
     "forward_monitor_present": true,
     "free_attention_vendor_bound": true,
-    "freeze_manifest_hash": "48a0b41285788b987f4a9a8299b9348c14468274a0ac0e7201881a8e1bcd3c21",
+    "freeze_manifest_hash": "4964a400c925465f6c4bc4efb2372bc7586b01ede59fde37342085eb73c5533c",
     "gate": "spec",
     "halt_absent": true,
     "halt_reason_resolved": false,
@@ -43,7 +43,7 @@
       "position_count": 0,
       "positions": [],
       "source": "alpaca_paper",
-      "synced_utc": "2026-11-01T02:25:42Z"
+      "synced_utc": "2026-11-01T02:27:22Z"
     },
     "paper_account_book_present": true,
     "paper_account_equity_usd": 100000.0,
