@@ -1,0 +1,18 @@
+{
+  "freeze_manifest_hash": "81151bf9a6df2167cefe52d6b53ec42cc894b906e9221da5e2580d196aa58e16",
+  "gate": "trade",
+  "hypothesis_id": "btc-spot-tsmom-4h",
+  "log_signature": "3e0007ce5abe982eb74522c3c0dd97d1088977c2d5fbe12d314434507d39888b",
+  "model_id": "jev-1.14.0",
+  "pass": true,
+  "request_hash": "r",
+  "response": {
+    "answers": {}
+  },
+  "response_body_hash": "b",
+  "state_hash": "s",
+  "threshold_compare": {
+    "pass": true
+  },
+  "timestamp_utc": "2026-11-01T02:16:00Z"
+}

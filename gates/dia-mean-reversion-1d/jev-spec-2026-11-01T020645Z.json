@@ -1,0 +1,60 @@
+{
+  "freeze_manifest_hash": "a5821df6f52de1fffeb5b146ad9f2c0a3866b9b6788af043ce3011d6d708dd34",
+  "gate": "spec",
+  "hypothesis_id": "dia-mean-reversion-1d",
+  "log_signature": "5cd5d8be7d808e178d07a05f9e155641b7ccffde954762c6535ad0549cfca8aa",
+  "model_id": "jev-1.14.0",
+  "pass": false,
+  "request_hash": "43c7c6a85f7abcfeeafec3b5d7178539f91839c230b2eeaaeee07ec16f6233c9",
+  "response": {
+    "answers": {
+      "equity_paper_not_perp": {
+        "noul": 0.88,
+        "type": "noul"
+      },
+      "long_only_loser_leg": {
+        "noul": 0.51,
+        "type": "noul"
+      },
+      "spec_falsifiable_dia_mr": {
+        "noul": 0.75,
+        "type": "noul"
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 1331,
+      "output_tokens": 70
+    }
+  },
+  "response_body_hash": "80146d3b97a9caedcd116302b2dc5d4692573db82a58518165e0d6dc23e8b0bc",
+  "state_hash": "fa3524a2967d4d7051bef1a3305f5e86573fd87f4b0081c012f3df6cb4cf9636",
+  "threshold_compare": {
+    "comparisons": [
+      {
+        "min_required": 0.65,
+        "pass": true,
+        "probability": 0.75,
+        "question_id": "spec_falsifiable_dia_mr",
+        "type": "noul"
+      },
+      {
+        "min_required": 0.65,
+        "pass": false,
+        "probability": 0.51,
+        "question_id": "long_only_loser_leg",
+        "type": "noul"
+      },
+      {
+        "min_required": 0.65,
+        "pass": true,
+        "probability": 0.88,
+        "question_id": "equity_paper_not_perp",
+        "type": "noul"
+      }
+    ],
+    "gate": "spec",
+    "pass": false
+  },
+  "timestamp_utc": "2026-11-01T02:06:45Z"
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "dia-mean-reversion-1d",
+  "description": "Bind HYPOTHESIS.md, preregistration.json, and data manifest before backtest or Jev.",
+  "artifacts": {
+    "HYPOTHESIS.md": "sha256:ba751cc22b3bc999cf630fbac1575c418fdde9541276347e5e9da245610e307f",
+    "preregistration.json": "sha256:f5f3963ce951131b2d0e834c0e1879331dfff6c69d3ba02e39aee9478c969184",
+    "data_manifest": {
+      "path": "data/manifests/dia-mean-reversion-1d-alpaca.yaml",
+      "sha256": "sha256:504f8417bfc43c169ebd3465b4700200ac0f4ec9223c979136d53838126854df"
+    }
+  },
+  "frozen_at_utc": null
+}

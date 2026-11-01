@@ -115,7 +115,15 @@ def _spec_fields(hypothesis_id: str, prereg: dict[str, Any]) -> dict[str, Any]:
         and manifest_instrument == "crypto_spot"
         and manifest_funding_null
     )
+    equity_paper_only = (
+        instrument == "equity"
+        and venue.get("paper_venue") == "alpaca_paper"
+        and manifest_instrument == "equity"
+    )
     disconfirmers = _hypothesis_disconfirmers_ok(hypothesis_id)
+    long_only_loser = _hypothesis_long_only_loser_leg_documented(hypothesis_id)
+    long_only_csmom = _hypothesis_long_only_csmom_documented(hypothesis_id)
+    pairs_short = _hypothesis_pairs_short_leg_documented(hypothesis_id)
     proof = _proof_contract_fields(prereg, hypothesis_id)
     cost_ok = False
     manifest_path: Path | None = None
@@ -126,26 +134,91 @@ def _spec_fields(hypothesis_id: str, prereg: dict[str, Any]) -> dict[str, Any]:
     except ManifestError:
         cost_ok = False
     engine_parity = bool((prereg.get("engine_parity") or {}).get("required_before_promotion"))
-    equity_symbol_ok = _manifest_single_equity_symbol_matches(prereg, manifest_path, venue)
+    attention_fields = _attention_manifest_fields(manifest_path)
+    equity_gld_only = _equity_gld_contract(prereg, manifest_path)
+    manifest_symbol_matches = _manifest_single_symbol_matches(prereg, manifest_path)
     vol_overlay_ok = _hypothesis_vol_overlay_long_only(hypothesis_id)
     overlay_ack = _hypothesis_overlay_portability_acknowledged(hypothesis_id)
     long_only_excerpt = _hypothesis_section_excerpt(hypothesis_id, "moreira-muir scaling")
+    equity_symbol_ok = _manifest_single_equity_symbol_matches(prereg, manifest_path, venue)
     return {
         "venue_contract_spot_only": spot_only,
+        "venue_contract_equity_paper_only": equity_paper_only,
         "venue_contract_equity_alpaca": _venue_contract_equity_alpaca(venue, manifest_instrument),
         "disconfirmers_documented": disconfirmers,
+        "long_only_loser_leg_documented": long_only_loser,
+        "long_only_csmom_documented": long_only_csmom,
+        "pairs_short_leg_documented": pairs_short,
         "manifest_cost_block_present": cost_ok,
         "engine_parity_required": engine_parity,
-        "manifest_single_spot_symbol_matches": _manifest_single_symbol_matches(prereg, manifest_path),
-        "manifest_single_equity_symbol_matches": equity_symbol_ok,
+        "manifest_single_spot_symbol_matches": manifest_symbol_matches and spot_only,
+        "manifest_single_equity_symbol_matches": equity_symbol_ok or (
+            manifest_symbol_matches and equity_paper_only
+        ),
+        "manifest_symbols_match_venue": _manifest_symbols_match_prereg(prereg, manifest_path),
         "vol_overlay_long_only_capped": vol_overlay_ok,
         "overlay_portability_acknowledged": overlay_ack,
         "spec_long_only_leverage_excerpt_present": _long_only_excerpt_ok(long_only_excerpt),
         "overlay_unproven_statement_present": _overlay_unproven_ok(hypothesis_id),
         "horizon_thinness_acknowledged": _hypothesis_horizon_thinness_acknowledged(hypothesis_id),
         "primary_citations_present": _hypothesis_primary_citations_present(hypothesis_id),
+        **attention_fields,
+        **equity_gld_only,
         **proof,
     }
+
+
+def _attention_manifest_fields(manifest_path: Path | None) -> dict[str, Any]:
+    if manifest_path is None or not manifest_path.is_file():
+        return {
+            "attention_manifest_present": False,
+            "free_attention_vendor_bound": False,
+            "attention_pit_partial_acknowledged": False,
+        }
+    manifest = load_data_manifest(manifest_path)
+    attention = manifest.get("attention")
+    if not isinstance(attention, dict):
+        return {
+            "attention_manifest_present": False,
+            "free_attention_vendor_bound": False,
+            "attention_pit_partial_acknowledged": False,
+        }
+    vendor = attention.get("vendor")
+    vendor_ok = vendor == "google_trends_free"
+    pit_ok = attention.get("exclude_partial_bars") is True
+    keywords_ok = isinstance(attention.get("negative_keyword"), str) and isinstance(
+        attention.get("baseline_keyword"), str
+    )
+    return {
+        "attention_manifest_present": True,
+        "free_attention_vendor_bound": vendor_ok and keywords_ok,
+        "attention_pit_partial_acknowledged": pit_ok,
+    }
+
+
+def _equity_gld_contract(prereg: dict[str, Any], manifest_path: Path | None) -> dict[str, Any]:
+    venue = prereg.get("venue_contract")
+    if not isinstance(venue, dict):
+        return {"venue_contract_equity_gld_only": False}
+    allowed = venue.get("allowed_symbols")
+    allowed_gld = (
+        isinstance(allowed, list)
+        and len(allowed) == 1
+        and str(allowed[0]).strip().upper() == "GLD"
+        and venue.get("instrument_class") == "equity"
+        and venue.get("paper_venue") == "alpaca_paper"
+    )
+    manifest_gld = False
+    if manifest_path is not None and manifest_path.is_file():
+        manifest = load_data_manifest(manifest_path)
+        symbols = manifest.get("universe", {}).get("symbols")
+        manifest_gld = (
+            manifest.get("instrument_class") == "equity"
+            and isinstance(symbols, list)
+            and len(symbols) == 1
+            and str(symbols[0]).strip().upper() == "GLD"
+        )
+    return {"venue_contract_equity_gld_only": allowed_gld and manifest_gld}
 
 
 def _proof_contract_fields(prereg: dict[str, Any], hypothesis_id: str) -> dict[str, Any]:
@@ -243,7 +316,164 @@ def _hypothesis_disconfirmers_ok(hypothesis_id: str) -> bool:
     dis_idx = text.index("## disconfirmers")
     dis_section = text[dis_idx:]
     proof_markers = ("perp funding", "perp", "funding p", "binance", "carry", "basis")
-    return any(marker in dis_section for marker in proof_markers)
+    if any(marker in dis_section for marker in proof_markers):
+        return True
+    equity_markers = ("live alpaca", "api.alpaca.markets", "backtest as gate 3", "gate 3 proof")
+    return any(marker in dis_section for marker in equity_markers)
+
+
+def _hypothesis_long_only_loser_leg_documented(hypothesis_id: str) -> bool:
+    if hypothesis_id != "dia-mean-reversion-1d":
+        return False
+    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
+    if not path.is_file():
+        return False
+    text = path.read_text(encoding="utf-8").lower()
+    if "long-only scope" not in text and "long-only loser" not in text:
+        return False
+    return "10.1016/j.jfineco.2012.11.005" in text or "israel" in text
+
+
+def _hypothesis_long_only_csmom_documented(hypothesis_id: str) -> bool:
+    if hypothesis_id != "eem-xlf-csmom-1d":
+        return False
+    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
+    if not path.is_file():
+        return False
+    text = path.read_text(encoding="utf-8").lower()
+    return "long only" in text and "10.1016/j.jfineco.2012.11.005" in text
+
+
+def _hypothesis_pairs_short_leg_documented(hypothesis_id: str) -> bool:
+    if hypothesis_id != "tlt-ief-pairs-1d":
+        return False
+    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
+    if not path.is_file():
+        return False
+    text = path.read_text(encoding="utf-8").lower()
+    return "short" in text and "tlt" in text and "ief" in text
+
+
+def _manifest_symbols_match_prereg(prereg: dict[str, Any], manifest_path: Path | None) -> bool:
+    venue = prereg.get("venue_contract")
+    if not isinstance(venue, dict):
+        return False
+    allowed = venue.get("allowed_symbols")
+    if not isinstance(allowed, list) or not allowed:
+        return False
+    if manifest_path is None or not manifest_path.is_file():
+        return False
+    manifest = load_data_manifest(manifest_path)
+    universe = manifest.get("universe")
+    if not isinstance(universe, dict):
+        return False
+    symbols = universe.get("symbols")
+    if not isinstance(symbols, list):
+        return False
+
+    def norm(symbol: object) -> str:
+        return str(symbol).upper().replace("/", "")
+
+    return sorted(norm(s) for s in symbols if isinstance(s, str)) == sorted(
+        norm(s) for s in allowed if isinstance(s, str)
+    )
+
+
+def _manifest_single_equity_symbol_matches(
+    prereg: dict[str, Any], manifest_path: Path | None, venue: dict[str, Any]
+) -> bool:
+    if venue.get("instrument_class") != "equity":
+        return False
+    allowed = venue.get("allowed_symbols")
+    if not isinstance(allowed, list) or len(allowed) != 1:
+        return False
+    if manifest_path is None or not manifest_path.is_file():
+        return False
+    manifest = load_data_manifest(manifest_path)
+    if manifest.get("instrument_class") != "equity":
+        return False
+    universe = manifest.get("universe")
+    if not isinstance(universe, dict):
+        return False
+    symbols = universe.get("symbols")
+    if not isinstance(symbols, list) or len(symbols) != 1:
+        return False
+    return str(symbols[0]).upper() == str(allowed[0]).upper()
+
+
+def _venue_contract_equity_alpaca(venue: dict[str, Any], manifest_instrument: str | None) -> bool:
+    return (
+        venue.get("instrument_class") == "equity"
+        and venue.get("paper_venue") == "alpaca_paper"
+        and manifest_instrument == "equity"
+    )
+
+
+def _hypothesis_vol_overlay_long_only(hypothesis_id: str) -> bool:
+    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
+    if not path.is_file():
+        return False
+    text = path.read_text(encoding="utf-8").lower()
+    compact = text.replace(" ", "")
+    return (
+        "long-only" in text
+        and "sigma_star/rv_21" in compact
+        and "w_exec=min(w_t,1.0)" in compact.replace(" ", "")
+        and ("no short" in text or ("forbidden" in text and "short" in text))
+    )
+
+
+def _hypothesis_overlay_portability_acknowledged(hypothesis_id: str) -> bool:
+    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
+    if not path.is_file():
+        return False
+    text = path.read_text(encoding="utf-8").lower()
+    markers = (
+        "unproven",
+        "portability test",
+        "no edge claimed",
+        "not a production signal",
+    )
+    return any(marker in text for marker in markers)
+
+
+def _hypothesis_section_excerpt(hypothesis_id: str, heading_fragment: str) -> str | None:
+    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
+    if not path.is_file():
+        return None
+    text = path.read_text(encoding="utf-8")
+    lower = text.lower()
+    needle = f"## {heading_fragment}".lower()
+    if needle not in lower:
+        return None
+    start = lower.index(needle)
+    rest = text[start + len(needle) :]
+    next_heading = rest.find("\n## ")
+    section = rest if next_heading < 0 else rest[:next_heading]
+    excerpt = " ".join(line.strip() for line in section.splitlines() if line.strip())
+    return excerpt[:1200] if excerpt else None
+
+
+def _long_only_excerpt_ok(excerpt: str | None) -> bool:
+    if not excerpt:
+        return False
+    lower = excerpt.lower()
+    compact = lower.replace(" ", "")
+    return (
+        "sigma_star/rv_21" in compact
+        and "w_exec" in lower
+        and "1.0" in excerpt
+        and "short" in lower
+        and "forbidden" in lower
+    )
+
+
+def _overlay_unproven_ok(hypothesis_id: str) -> bool:
+    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
+    if not path.is_file():
+        return False
+    intro = path.read_text(encoding="utf-8")[:1200].lower()
+    return "unproven" in intro and "moreira" in intro
 
 
 def _forward_operational_fields(hypothesis_id: str) -> dict[str, Any]:
@@ -440,103 +670,6 @@ def _hypothesis_has_sections(hypothesis_id: str) -> bool:
 
 def _hypothesis_has_disconfirmers(hypothesis_id: str) -> bool:
     return _hypothesis_disconfirmers_ok(hypothesis_id)
-
-
-def _manifest_single_equity_symbol_matches(
-    prereg: dict[str, Any], manifest_path: Path | None, venue: dict[str, Any]
-) -> bool:
-    if venue.get("instrument_class") != "equity":
-        return False
-    allowed = venue.get("allowed_symbols")
-    if not isinstance(allowed, list) or len(allowed) != 1:
-        return False
-    if manifest_path is None or not manifest_path.is_file():
-        return False
-    manifest = load_data_manifest(manifest_path)
-    if manifest.get("instrument_class") != "equity":
-        return False
-    universe = manifest.get("universe")
-    if not isinstance(universe, dict):
-        return False
-    symbols = universe.get("symbols")
-    if not isinstance(symbols, list) or len(symbols) != 1:
-        return False
-    return str(symbols[0]).upper() == str(allowed[0]).upper()
-
-
-def _venue_contract_equity_alpaca(venue: dict[str, Any], manifest_instrument: str | None) -> bool:
-    return (
-        venue.get("instrument_class") == "equity"
-        and venue.get("paper_venue") == "alpaca_paper"
-        and manifest_instrument == "equity"
-    )
-
-
-def _hypothesis_vol_overlay_long_only(hypothesis_id: str) -> bool:
-    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
-    if not path.is_file():
-        return False
-    text = path.read_text(encoding="utf-8").lower()
-    compact = text.replace(" ", "")
-    return (
-        "long-only" in text
-        and "sigma_star/rv_21" in compact
-        and "w_exec=min(w_t,1.0)" in compact.replace(" ", "")
-        and ("no short" in text or ("forbidden" in text and "short" in text))
-    )
-
-
-def _hypothesis_overlay_portability_acknowledged(hypothesis_id: str) -> bool:
-    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
-    if not path.is_file():
-        return False
-    text = path.read_text(encoding="utf-8").lower()
-    markers = (
-        "unproven",
-        "portability test",
-        "no edge claimed",
-        "not a production signal",
-    )
-    return any(marker in text for marker in markers)
-
-
-def _hypothesis_section_excerpt(hypothesis_id: str, heading_fragment: str) -> str | None:
-    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
-    if not path.is_file():
-        return None
-    text = path.read_text(encoding="utf-8")
-    lower = text.lower()
-    needle = f"## {heading_fragment}".lower()
-    if needle not in lower:
-        return None
-    start = lower.index(needle)
-    rest = text[start + len(needle) :]
-    next_heading = rest.find("\n## ")
-    section = rest if next_heading < 0 else rest[:next_heading]
-    excerpt = " ".join(line.strip() for line in section.splitlines() if line.strip())
-    return excerpt[:1200] if excerpt else None
-
-
-def _long_only_excerpt_ok(excerpt: str | None) -> bool:
-    if not excerpt:
-        return False
-    lower = excerpt.lower()
-    compact = lower.replace(" ", "")
-    return (
-        "sigma_star/rv_21" in compact
-        and "w_exec" in lower
-        and "1.0" in excerpt
-        and "short" in lower
-        and "forbidden" in lower
-    )
-
-
-def _overlay_unproven_ok(hypothesis_id: str) -> bool:
-    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
-    if not path.is_file():
-        return False
-    intro = path.read_text(encoding="utf-8")[:1200].lower()
-    return "unproven" in intro and "moreira" in intro
 
 
 def _manifest_single_symbol_matches(prereg: dict[str, Any], manifest_path: Path | None) -> bool:

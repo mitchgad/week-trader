@@ -1,0 +1,60 @@
+{
+  "freeze_manifest_hash": "b9b72d8cf3df44e4df095096dad413486571a4e09f71d9f9867ac09e1d275bbf",
+  "gate": "spec",
+  "hypothesis_id": "gld-negative-attention-1d",
+  "log_signature": "1acf9d99edbcc81cf19cb405ae24f9f67bb27f31a17b90cf07ee6d27c8db902f",
+  "model_id": "jev-1.14.0",
+  "pass": true,
+  "request_hash": "d0f623dea3465b75acd917133c9baba8ce644853418c32ecfe84e340e5d518d8",
+  "response": {
+    "answers": {
+      "equity_gld_forward_proof": {
+        "noul": 0.94,
+        "type": "noul"
+      },
+      "free_trends_not_invented": {
+        "noul": 0.79,
+        "type": "noul"
+      },
+      "spec_falsifiable_gld_attention": {
+        "noul": 0.77,
+        "type": "noul"
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 1407,
+      "output_tokens": 71
+    }
+  },
+  "response_body_hash": "543bf8c7ff379affba017e3feaf94cd0811e4eabc8285d86c62d34e7f140e245",
+  "state_hash": "ad8739224477adaaae3114039256b90ea325acb107f062dd8b12e57b7de8eaad",
+  "threshold_compare": {
+    "comparisons": [
+      {
+        "min_required": 0.65,
+        "pass": true,
+        "probability": 0.77,
+        "question_id": "spec_falsifiable_gld_attention",
+        "type": "noul"
+      },
+      {
+        "min_required": 0.65,
+        "pass": true,
+        "probability": 0.79,
+        "question_id": "free_trends_not_invented",
+        "type": "noul"
+      },
+      {
+        "min_required": 0.65,
+        "pass": true,
+        "probability": 0.94,
+        "question_id": "equity_gld_forward_proof",
+        "type": "noul"
+      }
+    ],
+    "gate": "spec",
+    "pass": true
+  },
+  "timestamp_utc": "2026-11-01T02:07:15Z"
+}

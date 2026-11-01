@@ -24,6 +24,16 @@ def test_build_jev_state_includes_eth_spec_fields() -> None:
     assert fields["disconfirmers_documented"] is True
 
 
+def test_build_jev_state_includes_spy_equity_spec_fields() -> None:
+    state = build_jev_state("spy-equity-tsmom-1d", gate="spec")
+    fields = state["fields"]
+    assert fields["venue_contract_equity_paper_only"] is True
+    assert fields["manifest_single_equity_symbol_matches"] is True
+    assert fields["horizon_thinness_acknowledged"] is True
+    assert fields["primary_citations_present"] is True
+    assert fields["disconfirmers_documented"] is True
+
+
 def test_build_jev_state_includes_spec_fields_for_btc() -> None:
     state = build_jev_state("btc-spot-tsmom-4h", gate="spec")
     fields = state["fields"]

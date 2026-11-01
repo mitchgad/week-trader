@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "eem-xlf-csmom-1d",
+  "description": "Frozen spec artifacts",
+  "artifacts": {
+    "HYPOTHESIS.md": "sha256:e0201573bfb8cd13032886ed69465161d0501348a63dbf2e165e295ceeb25eca",
+    "preregistration.json": "sha256:55be2c748bd93cc21a6cd332f761732bb7a9ccd0e803bdf195875f32a5dcdfa6",
+    "data_manifest": {
+      "path": "data/manifests/eem-xlf-csmom-1d-alpaca.yaml",
+      "sha256": "sha256:bb885b31a883fd7e7edd67cf78104a2652c0b619edf3286abf0c3d582acd8647"
+    }
+  },
+  "frozen_at_utc": null
+}

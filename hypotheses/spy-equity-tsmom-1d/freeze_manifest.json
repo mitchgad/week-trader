@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "spy-equity-tsmom-1d",
+  "description": "Bind HYPOTHESIS.md, full preregistration.json, and data manifest before backtest or Jev.",
+  "frozen_at_utc": "2026-11-01T02:10:00Z",
+  "artifacts": {
+    "HYPOTHESIS.md": "sha256:f3f12f1fd88b5b33d5f3c1e86bb21dd53bfc9858838408c89ae99ed57da4e62b",
+    "preregistration.json": "sha256:d26f6b4662f28cbf07c85426cc9c5bfae595b5d0850ea96b79611fc3bec53a96",
+    "data_manifest": {
+      "path": "data/manifests/spy-equity-tsmom-1d-alpaca.yaml",
+      "sha256": "sha256:461aec614a08ba64d9369e4d91a1555ac7417d56e7426bae7bddc47108f41b26"
+    }
+  }
+}
