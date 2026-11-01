@@ -93,6 +93,7 @@ def write_gate_log(
     passed: bool,
     threshold_compare: dict[str, Any],
     response_body: dict[str, Any],
+    deduced_reason: dict[str, Any] | None = None,
 ) -> Path:
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     payload: dict[str, Any] = {
@@ -108,6 +109,8 @@ def write_gate_log(
         "threshold_compare": threshold_compare,
         "response": response_body,
     }
+    if deduced_reason is not None:
+        payload["deduced_reason"] = deduced_reason
     payload["log_signature"] = sign_gate_log(payload)
 
     out_dir = repo_root() / "gates" / hypothesis_id

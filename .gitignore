@@ -10,6 +10,7 @@ __pycache__/
 dist/
 build/
 .DS_Store
+.ci-evidence/
 gates/*/
 !gates/.gitkeep
 !gates/gate4-checklist.yaml

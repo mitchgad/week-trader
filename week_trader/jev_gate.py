@@ -3,7 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from week_trader.ci_evidence import deployed_git_sha, resolve_ci_pass_fields
+from week_trader.deduced_reason import build_deduced_reason
 from week_trader.gate_log import GateLogError, write_gate_log
+from week_trader.gate_record import GateRecordError, append_gate_record
 from week_trader.jev_state import build_jev_state
 from week_trader.manifest import ManifestError, resolve_manifest_for_hypothesis, validate_manifest_costs
 from week_trader.manifest import load_data_manifest
@@ -60,8 +63,20 @@ def run_jev_gate(hypothesis_id: str, gate: str, *, metrics_path: Path | None = N
     passed, threshold_compare = compare_thresholds(gate, prereg, response, questions)
     response_hash = sha256_json(response)
 
+    deduced = build_deduced_reason(
+        gate=gate,
+        prereg=prereg,
+        state=state,
+        questions=questions,
+        response=response,
+        threshold_compare=threshold_compare,
+    )
+
+    deployed_sha = deployed_git_sha()
+    _, _, ci_meta = resolve_ci_pass_fields(deployed_sha)
+
     try:
-        return write_gate_log(
+        log_path = write_gate_log(
             hypothesis_id,
             gate,
             freeze_manifest_hash=freeze_hash,
@@ -72,6 +87,31 @@ def run_jev_gate(hypothesis_id: str, gate: str, *, metrics_path: Path | None = N
             passed=passed,
             threshold_compare=threshold_compare,
             response_body=response,
+            deduced_reason=deduced,
         )
     except GateLogError as exc:
         raise JevGateError(str(exc)) from exc
+
+    try:
+        append_gate_record(
+            hypothesis_id=hypothesis_id,
+            gate=gate,
+            gate_log_path=log_path,
+            freeze_manifest_hash=freeze_hash,
+            state=state,
+            request_body=request_body,
+            request_hash=request_hash,
+            state_hash=str(state_hash),
+            response_body_hash=response_hash,
+            model_id=str(model_id),
+            passed=passed,
+            threshold_compare=threshold_compare,
+            response_body=response,
+            deduced_reason=deduced,
+            deployed_git_sha=deployed_sha,
+            ci_evidence_meta=ci_meta,
+        )
+    except GateRecordError as exc:
+        raise JevGateError(str(exc)) from exc
+
+    return log_path

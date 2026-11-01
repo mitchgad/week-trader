@@ -31,6 +31,21 @@ jobs:
           fi
       - name: Pytest
         run: pytest -q
+      - name: Record CI evidence for deployed SHA
+        if: success()
+        run: |
+          python - <<'PY'
+          from week_trader.ci_evidence import deployed_git_sha, write_local_ci_evidence_file
+
+          sha = deployed_git_sha()
+          write_local_ci_evidence_file(
+              sha,
+              implementation_audit_pass=True,
+              unit_tests_pass=True,
+              source="github_actions_ci",
+          )
+          print("recorded ci evidence for", sha)
+          PY
       - name: jev-gate fails closed without API key
         run: |
           if jev-gate ID=_template GATE=spec; then
