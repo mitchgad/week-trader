@@ -280,6 +280,46 @@ def fetch_equity_daily_closes_volumes(
     return closes, volumes
 
 
+def fetch_equity_cash_dividends(
+    symbols: list[str],
+    *,
+    start_date: str,
+    end_date: str,
+    http_get: HttpGet | None = None,
+) -> list[dict[str, Any]]:
+    """Cash dividend corporate actions from Alpaca market data (read-only)."""
+    normalized = [s.strip().upper() for s in symbols if isinstance(s, str) and s.strip()]
+    if not normalized:
+        return []
+    params = {
+        "cas_symbols": ",".join(normalized),
+        "cas_types": "cash_dividend",
+        "cas_start": start_date,
+        "cas_end": end_date,
+        "cas_data_quality": "complete",
+    }
+    payload = alpaca_paper_request(
+        "GET",
+        "/v1/corporate-actions",
+        params={k: str(v) for k, v in params.items()},
+        http_get=http_get,
+        base_url=data_base_url(),
+    )
+    if not isinstance(payload, dict):
+        raise AlpacaPaperError("Alpaca corporate actions response must be object — fail closed")
+    corporate = payload.get("corporate_actions")
+    if not isinstance(corporate, dict):
+        return []
+    rows = corporate.get("cash_dividends")
+    if not isinstance(rows, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        if isinstance(row, dict):
+            out.append(row)
+    return out
+
+
 def fetch_equity_daily_bar_closes(
     symbol: str,
     *,
