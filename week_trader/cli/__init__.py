@@ -12,7 +12,7 @@ from week_trader.paper_order import PaperOrderError, paper_order
 from week_trader.forward_anomalies import check_forward_anomalies
 from week_trader.paper_forward import (
     PaperForwardError,
-    evaluate_tsmom_1d_signal,
+    evaluate_equity_1d_signal,
     evaluate_tsmom_4h_signal,
     manifest_bar_interval,
     record_signal,
@@ -109,7 +109,7 @@ def main_paper_forward(argv: list[str] | None = None) -> None:
                 closes = [float(x) for x in closes_raw]
                 interval = manifest_bar_interval(hypothesis_id)
                 if interval == "1Day":
-                    signal = evaluate_tsmom_1d_signal(closes, hypothesis_id=hypothesis_id)
+                    signal = evaluate_equity_1d_signal(closes, hypothesis_id=hypothesis_id)
                 elif interval == "4h":
                     signal = evaluate_tsmom_4h_signal(closes, hypothesis_id=hypothesis_id)
                 else:

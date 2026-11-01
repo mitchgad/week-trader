@@ -181,7 +181,7 @@ def _validate_order_intent(hypothesis_id: str, intent: dict[str, Any], prereg: d
     if instrument == "crypto_spot":
         _validate_crypto_spot_intent(hypothesis_id, intent, prereg)
         return
-    if instrument == "equity":
+    if instrument in {"equity", "equity_etf"}:
         _validate_equity_intent(hypothesis_id, intent, prereg)
         return
     raise PaperOrderError(f"unsupported instrument_class {instrument!r}")
@@ -222,8 +222,9 @@ def _validate_crypto_spot_intent(hypothesis_id: str, intent: dict[str, Any], pre
 
 def _validate_equity_intent(hypothesis_id: str, intent: dict[str, Any], prereg: dict[str, Any]) -> None:
     venue = prereg.get("venue_contract", {})
-    if venue.get("instrument_class") != "equity":
-        raise PaperOrderError("order intents require equity venue_contract")
+    instrument_class = venue.get("instrument_class")
+    if instrument_class not in {"equity", "equity_etf"}:
+        raise PaperOrderError("order intents require equity or equity_etf venue_contract")
     symbol = intent.get("symbol")
     if not isinstance(symbol, str) or not symbol.strip():
         raise PaperOrderError("order intent symbol required")
@@ -233,8 +234,11 @@ def _validate_equity_intent(hypothesis_id: str, intent: dict[str, Any], prereg: 
         manifest = load_data_manifest(manifest_path)
     except ManifestError as exc:
         raise PaperOrderError(str(exc)) from exc
-    if manifest.get("instrument_class") != "equity":
-        raise PaperOrderError("manifest instrument_class must be equity")
+    manifest_class = manifest.get("instrument_class")
+    if manifest_class not in {"equity", "equity_etf"}:
+        raise PaperOrderError("manifest instrument_class must be equity or equity_etf")
+    if manifest_class != instrument_class:
+        raise PaperOrderError("manifest instrument_class must match venue_contract")
     universe = manifest.get("universe")
     if not isinstance(universe, dict):
         raise PaperOrderError("manifest universe missing")

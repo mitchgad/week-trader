@@ -141,7 +141,7 @@ def record_signal_from_live_bars(hypothesis_id: str) -> dict[str, Any]:
         signal["closes_source"] = "alpaca_live_4h"
     elif interval == "1Day":
         closes = fetch_live_equity_daily_closes(hypothesis_id)
-        signal = evaluate_tsmom_1d_signal(closes, hypothesis_id=hypothesis_id)
+        signal = evaluate_equity_1d_signal(closes, hypothesis_id=hypothesis_id)
         signal["closes_source"] = "alpaca_live_1d"
     else:
         raise PaperForwardError(f"unsupported live bar interval {interval!r}")
@@ -211,6 +211,34 @@ def evaluate_tsmom_4h_signal(closes: list[float], *, hypothesis_id: str) -> dict
         "side": side,
         "last_close": closes[-1],
     }
+
+
+def evaluate_dia_mean_reversion_1d_signal(closes: list[float], *, hypothesis_id: str) -> dict[str, Any]:
+    """Daily contrarian loser leg: long when prior 5-day simple return is negative."""
+    formation_days = 5
+    if len(closes) < formation_days + 1:
+        raise PaperForwardError(
+            f"need at least {formation_days + 1} daily closes for {hypothesis_id} signal"
+        )
+    start_close = closes[-(formation_days + 1)]
+    end_close = closes[-1]
+    if start_close <= 0:
+        raise PaperForwardError("invalid non-positive close in formation window")
+    formation_return = end_close / start_close - 1.0
+    side = "long" if formation_return < 0 else "flat"
+    return {
+        "strategy": hypothesis_id,
+        "formation_days": formation_days,
+        "formation_return": formation_return,
+        "side": side,
+        "last_close": end_close,
+    }
+
+
+def evaluate_equity_1d_signal(closes: list[float], *, hypothesis_id: str) -> dict[str, Any]:
+    if hypothesis_id == "dia-mean-reversion-1d":
+        return evaluate_dia_mean_reversion_1d_signal(closes, hypothesis_id=hypothesis_id)
+    return evaluate_tsmom_1d_signal(closes, hypothesis_id=hypothesis_id)
 
 
 def evaluate_tsmom_1d_signal(closes: list[float], *, hypothesis_id: str) -> dict[str, Any]:
@@ -289,7 +317,7 @@ def run_forward_monitor_tick(
         prereg = load_preregistration(hypothesis_id)
         manifest_path = resolve_manifest_for_hypothesis(hypothesis_id, prereg)
         manifest = load_data_manifest(manifest_path)
-        if manifest.get("instrument_class") == "equity":
+        if manifest.get("instrument_class") in {"equity", "equity_etf"}:
             btc_spot_position = summarize_equity_position(positions, manifest_symbol)
         else:
             btc_spot_position = summarize_spot_position(positions, manifest_symbol)
