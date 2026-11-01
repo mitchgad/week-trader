@@ -26,6 +26,10 @@ def test_btc_symbol_owner_is_btc_hypothesis() -> None:
     assert resolve_symbol_owner("BTCUSD") == "btc-spot-tsmom-4h"
 
 
+def test_spy_symbol_owner_from_paper_guard_overlay() -> None:
+    assert resolve_symbol_owner("SPY") == "spy-equity-tsmom-1d"
+
+
 def test_account_halt_blocks_before_slice(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     repo = Path(__file__).resolve().parents[1]
     monkeypatch.setattr("week_trader.paper_account_guards.repo_root", lambda: tmp_path)
