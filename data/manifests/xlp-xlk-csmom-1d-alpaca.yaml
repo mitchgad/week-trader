@@ -1,0 +1,43 @@
+manifest_version: 1
+dataset_id: xlp-xlk-csmom-1d-alpaca
+as_of_utc: "2026-11-01T00:00:00Z"
+
+universe:
+  point_in_time: true
+  symbols:
+    - XLP
+    - XLK
+  liquidity_filter:
+    min_adv_usd_30d: 1000000
+    lookback_days: 30
+
+bars:
+  timezone: America/New_York
+  interval: 1Day
+  signal_bar_close: true
+  order_default: next_session_open
+  session: us_equity_regular
+
+instrument_class: equity_etf
+
+venue_contract:
+  execution_venue: alpaca_equity
+  paper_venue: alpaca_paper
+  promotion_operational_proof: alpaca_paper_equity_forward_only
+
+costs:
+  fee_bps_per_side: 0
+  slippage_bps_per_side: 2
+  spread_model: half_spread_fixed_bps
+  funding_interval_hours: null
+  funding_series_id: null
+
+pit_rules:
+  listing: include_from_first_tradable_timestamp
+  delist: exclude_from_halt_timestamp
+  survivorship_report: etf_continuous
+
+checksum:
+  method: sha256
+  value: "0000000000000000000000000000000000000000000000000000000000000000"
+  note: Replace after materializing dataset off-repo

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "qqq-equity-tsmom-1d",
+  "description": "Bind HYPOTHESIS.md, full preregistration.json, and data manifest before backtest or Jev.",
+  "frozen_at_utc": "2026-11-01T02:24:56Z",
+  "artifacts": {
+    "HYPOTHESIS.md": "sha256:5d513409ace7130a170d9acb24a368e1f73ba255670eb1648bdf2fcad512fe9f",
+    "preregistration.json": "sha256:88c3ce2c544e99fd5efb951f755519245f2c7e38fed9117773b15a37b542e5f6",
+    "data_manifest": {
+      "path": "data/manifests/qqq-equity-tsmom-1d-alpaca.yaml",
+      "sha256": "sha256:c7dbc050c3cda3c53c5d47b60233a64eef7dcbc9b07ca3a7f30614c9255babbc"
+    }
+  }
+}

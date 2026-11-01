@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "xlp-xlk-csmom-1d",
+  "symbol_owners": {
+    "XLP": "xlp-xlk-csmom-1d",
+    "XLK": "xlp-xlk-csmom-1d"
+  },
+  "strategy_slices": {
+    "xlp-xlk-csmom-1d": {
+      "max_notional_usd": 5000,
+      "fill_tag": "wt-xlp-xlk-csmom-1d"
+    }
+  }
+}

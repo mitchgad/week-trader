@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "sol-spot-tsmom-4h",
+  "symbol_owners": {
+    "SOL/USD": "sol-spot-tsmom-4h",
+    "SOLUSD": "sol-spot-tsmom-4h"
+  },
+  "strategy_slices": {
+    "sol-spot-tsmom-4h": {
+      "max_notional_usd": 5000,
+      "fill_tag": "wt-sol-spot-tsmom-4h"
+    }
+  }
+}

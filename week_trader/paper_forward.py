@@ -158,10 +158,13 @@ def record_signal_from_live_bars(hypothesis_id: str) -> dict[str, Any]:
     prereg = load_preregistration(hypothesis_id)
     manifest_path = resolve_manifest_for_hypothesis(hypothesis_id, prereg)
     manifest = load_data_manifest(manifest_path)
-    if hypothesis_id == "gld-negative-attention-1d":
-        return record_gld_negative_attention_live_signal(hypothesis_id, manifest)
+    attention = manifest.get("attention")
+    if isinstance(attention, dict) and attention.get("vendor") == "google_trends_free":
+        if attention.get("mode") == "positive_ratio":
+            raise PaperForwardError("positive_ratio attention not enabled in v1 forward loop")
+        return record_negative_attention_live_signal(hypothesis_id, manifest)
     interval = manifest_bar_interval(hypothesis_id)
-    if interval == "1Day" and hypothesis_id == "eem-xlf-csmom-1d":
+    if interval == "1Day" and hypothesis_id.endswith("-csmom-1d"):
         closes_map = fetch_live_equity_daily_closes_map(hypothesis_id)
         signal = evaluate_eem_xlf_csmom_1d_signal(closes_map, hypothesis_id=hypothesis_id)
         signal["closes_source"] = "alpaca_live_1d"
@@ -191,12 +194,12 @@ def record_signal_from_live_bars(hypothesis_id: str) -> dict[str, Any]:
     return record_signal(hypothesis_id, signal)
 
 
-def record_gld_negative_attention_live_signal(
+def record_negative_attention_live_signal(
     hypothesis_id: str, manifest: dict[str, Any]
 ) -> dict[str, Any]:
     attention = manifest.get("attention")
     if not isinstance(attention, dict):
-        raise PaperForwardError("manifest attention block required for GLD attention signal")
+        raise PaperForwardError("manifest attention block required for negative attention signal")
     negative_kw = attention.get("negative_keyword")
     baseline_kw = attention.get("baseline_keyword")
     if not isinstance(negative_kw, str) or not isinstance(baseline_kw, str):
@@ -212,13 +215,22 @@ def record_gld_negative_attention_live_signal(
     signal = evaluate_gld_negative_attention_1d(
         trend_rows,
         hypothesis_id=hypothesis_id,
+        symbol=symbol,
         lookback_rows=lookback_rows,
         high_ratio_quantile=high_q,
+        negative_keyword=negative_kw,
+        baseline_keyword=baseline_kw,
     )
     signal["closes_source"] = "google_trends_free_plus_alpaca_live_1d"
     signal["last_close"] = daily_closes[-1]
     signal["bar_count"] = len(daily_closes)
     return record_signal(hypothesis_id, signal)
+
+
+def record_gld_negative_attention_live_signal(
+    hypothesis_id: str, manifest: dict[str, Any]
+) -> dict[str, Any]:
+    return record_negative_attention_live_signal(hypothesis_id, manifest)
 
 
 def _manifest_primary_symbol(manifest: dict[str, Any]) -> str:
@@ -693,6 +705,6 @@ def read_last_signal_side(events_path: Path) -> str | None:
         if not isinstance(payload, dict):
             continue
         side = payload.get("side")
-        if side in {"long", "flat"}:
+        if side in {"long", "flat", "short"}:
             last_side = str(side)
     return last_side

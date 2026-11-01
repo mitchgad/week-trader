@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "mstr-equity-tsmom-1d",
+  "symbol_owners": {
+    "MSTR": "mstr-equity-tsmom-1d"
+  },
+  "strategy_slices": {
+    "mstr-equity-tsmom-1d": {
+      "max_notional_usd": 5000,
+      "fill_tag": "wt-mstr-equity-tsmom-1d"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "sol-spot-tsmom-4h",
+  "description": "Bind HYPOTHESIS.md, full preregistration.json, and data manifest before backtest or Jev.",
+  "frozen_at_utc": "2026-11-01T02:26:38Z",
+  "artifacts": {
+    "HYPOTHESIS.md": "sha256:4717b03a630d29f225bcac63ec68669f9bd651391b7912da33c7085ca46a1fc0",
+    "preregistration.json": "sha256:c6c2fc53ebd7364f81684e05ca9da176c42a011516c271109bc3728dbc4229c7",
+    "data_manifest": {
+      "path": "data/manifests/sol-spot-tsmom-4h-alpaca.yaml",
+      "sha256": "sha256:ab98c4d318a97355aec4e0621acb530f2e54bbbed5b465f86a4b1ede9c7ee027"
+    }
+  }
+}

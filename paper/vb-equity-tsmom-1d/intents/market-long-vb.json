@@ -1,0 +1,8 @@
+{
+  "symbol": "VB",
+  "side": "buy",
+  "qty": "17",
+  "type": "market",
+  "time_in_force": "day",
+  "reference_price_usd": 290.05
+}

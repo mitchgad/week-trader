@@ -1,0 +1,62 @@
+manifest_version: 1
+dataset_id: slv-negative-attention-1d-alpaca
+as_of_utc: "2026-11-01T00:00:00Z"
+
+universe:
+  point_in_time: true
+  symbols:
+    - SLV
+  liquidity_filter:
+    min_adv_usd_30d: 1000000
+    lookback_days: 30
+
+bars:
+  timezone: America/New_York
+  interval: 1Day
+  signal_bar_close: true
+  order_default: next_session_open
+
+instrument_class: equity
+
+venue_contract:
+  execution_venue: alpaca_equities
+  paper_venue: alpaca_paper
+  notes: >
+    Alpaca paper US equities sim only. SLV (SPDR Gold Shares ETF) — long-only;
+    no crypto, no perp, no short borrow modeling beyond Alpaca defaults.
+  promotion_operational_proof: alpaca_paper_equity_forward_only
+  forbidden_promotion_evidence:
+    - crypto_perp_funding_pnl
+    - backtest_replay_without_forward_events
+    - invented_attention_series
+
+attention:
+  vendor: google_trends_free
+  negative_keyword: silver crash
+  baseline_keyword: silver price
+  geo: US
+  timeframe: today 5-y
+  lookback_rows: 252
+  high_ratio_quantile: 0.8
+  exclude_partial_bars: true
+  pit_notes: >
+    Google Trends may revise recent buckets; signal code drops isPartial days.
+    Ratio adapts Liu–Tsyvinski negative-attention sketch (Bitcoin hack / Bitcoin)
+    to SLV with free search proxies — not a vendor guarantee.
+
+costs:
+  fee_bps_per_side: 0
+  slippage_bps_per_side: 5
+  spread_model: half_spread_fixed_bps
+  funding_interval_hours: null
+  funding_series_id: null
+
+pit_rules:
+  listing: include_from_first_tradable_timestamp
+  delist: exclude_from_halt_timestamp
+  survivorship_report: not_applicable_single_name
+
+checksum:
+  method: sha256
+  value: "0000000000000000000000000000000000000000000000000000000000000000"
+  note: Forward paper only for v1 — no materialized research dataset in-repo

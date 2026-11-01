@@ -13,11 +13,14 @@ def evaluate_gld_negative_attention_1d(
     rows: Sequence[TrendsDailyRow],
     *,
     hypothesis_id: str,
+    symbol: str = "GLD",
     lookback_rows: int = 252,
     high_ratio_quantile: float = 0.8,
+    negative_keyword: str = "gold crash",
+    baseline_keyword: str = "gold price",
 ) -> dict[str, object]:
     """
-    C2-style negative attention on GLD: flat when crash/baseline search ratio is in the
+    C2-style negative attention: flat when crash/baseline search ratio is in the
     top historical quintile; otherwise long. Uses only completed (non-partial) days.
     """
     if not 0.0 < high_ratio_quantile < 1.0:
@@ -37,11 +40,11 @@ def evaluate_gld_negative_attention_1d(
     return {
         "strategy": hypothesis_id,
         "signal_family": "negative_attention_ratio",
-        "symbol": "GLD",
+        "symbol": symbol.upper(),
         "side": side,
         "attention_date": today.date_utc,
-        "negative_keyword": "gold crash",
-        "baseline_keyword": "gold price",
+        "negative_keyword": negative_keyword,
+        "baseline_keyword": baseline_keyword,
         "ratio": today_ratio,
         "high_ratio_threshold": threshold,
         "lookback_rows": lookback_rows,

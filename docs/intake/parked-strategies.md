@@ -1,95 +1,75 @@
 # Parked strategies — Alpaca paper (v1)
 
-**Purpose:** Record strategy families and example hypotheses **not** run on the project’s **Alpaca paper** account in v1. No `hypotheses/` specs, Jev questions, backtests, or orders for these IDs here.
+**Purpose:** Record strategy families **not** run on Alpaca paper in v1. Active replacements below are **forward-testable** on the shared paper account (see `hypotheses/`).
 
-**Active builds (do not duplicate):** `btc-spot-tsmom-4h` (BTC/USD), `eth-spot-tsmom-4h` (ETH/USD), `dia-mean-reversion-1d` (DIA), `eem-xlf-csmom-1d` (EEM, XLF), `tlt-ief-pairs-1d` (TLT, IEF). One owner per symbol.
+**Active builds (do not duplicate):** `btc-spot-tsmom-4h`, `eth-spot-tsmom-4h`, `spy-equity-tsmom-1d`, `dia-mean-reversion-1d`, `eem-xlf-csmom-1d`, `tlt-ief-pairs-1d`, `gld-negative-attention-1d`, plus replacements: `usmv-equity-tsmom-1d`, `qqq-equity-tsmom-1d`, `vb-equity-tsmom-1d`, `sol-spot-tsmom-4h`, `slv-negative-attention-1d`, `mstr-equity-tsmom-1d`, `xlp-xlk-csmom-1d`. One owner per symbol.
 
-**Alpaca paper equity shorts (2026-11-01):** Alpaca’s [Paper Trading](https://docs.alpaca.markets/us/docs/paper-trading) feature table lists **Short Selling ✅** on paper (same API as live, paper base URL only). Project paper account `shorting_enabled=true`. **Crypto spot cannot be shorted** on Alpaca — alt short sleeves stay parked.
+**Alpaca paper equity shorts (2026-11-01):** [Paper Trading](https://docs.alpaca.markets/docs/paper-trading) lists **Short Selling ✅**. Crypto spot cannot be shorted.
 
-**Sources:** [week-trader-plan.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/week-trader-plan.md), [research-gap-fill.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/research-gap-fill.md), [research-mean-reversion.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/research-mean-reversion.md), [research-premia-crypto.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/research-premia-crypto.md), [algorithms-and-paper-trade.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/algorithms-and-paper-trade.md).
-
----
-
-## Carry / funding / basis / perps
-
-**Status:** parked
-
-Alpaca paper is **US equities + crypto spot sim only** — it does **not** model perp **funding**, **ADL**, **liquidation**, or **mark-price** tail mechanics ([week-trader-plan.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/week-trader-plan.md) §4.4–§4.5; [algorithms-and-paper-trade.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/algorithms-and-paper-trade.md) A.2 `venue_contract`). BIS crypto carry and He et al. (*Fundamentals of Perpetual Futures*, [arXiv:2212.06888](https://arxiv.org/abs/2212.06888)) are **perp–spot / funding** economics ([research-gap-fill.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/research-gap-fill.md) §1, §3). **Do not** fake a spot-only version of funding harvest or basis trades on Alpaca.
+**Sources:** Project store docs (`week-trader-plan.md`, `research-gap-fill.md`, `algorithms-and-paper-trade.md`).
 
 ---
 
-## C8 — volume-clock session momentum (BTC)
+## Carry / funding / basis / perps → **`usmv-equity-tsmom-1d`**
 
-**Status:** parked
-
-Example spec is **1-minute / session** horizon (3 weeks **1m** paper) ([algorithms-and-paper-trade.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/algorithms-and-paper-trade.md) C8; [week-trader-plan.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/week-trader-plan.md) §5.4). Week trader scope is **hours to several days**, not minute-scale session bots (plan horizon paragraph).
+**Status:** **active** — daily long-only **USMV** time-series momentum on Alpaca paper equities. **Not** crypto funding, basis, or perp carry ([research-gap-fill.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/research-gap-fill.md) §1). Moskowitz, Ooi & Pedersen (2012) TSMOM [DOI 10.1016/j.jfineco.2011.11.003](https://doi.org/10.1016/j.jfineco.2011.11.003).
 
 ---
 
-## C6 — cross-exchange Bitcoin discount slope
+## C8 — volume-clock session momentum (BTC) → **`qqq-equity-tsmom-1d`**
 
-**Status:** parked
-
-Requires **multi-leg** long/short across **two or more venues**; Makarov & Schoar (*JFE* 2020, [DOI 10.1016/j.jfineco.2019.07.001](https://doi.org/10.1016/j.jfineco.2019.07.001)) documents capital-control and transfer frictions ([algorithms-and-paper-trade.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/algorithms-and-paper-trade.md) C6, A.5). v1 paper rail is **Alpaca only** — not a second exchange leg.
+**Status:** **active** — **daily QQQ** TSMOM (hours–days horizon), **not** 1-minute BTC session bars ([algorithms-and-paper-trade.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/algorithms-and-paper-trade.md) C8 scope).
 
 ---
 
-## C1 — investor attention (Google Trends) long BTC
+## C6 — cross-exchange Bitcoin discount slope → **`sol-spot-tsmom-4h`**
 
-**Status:** parked
+**Status:** **active** — **single-venue SOL/USD** spot 4h TSMOM on Alpaca paper. **Not** two-venue discount slope (Makarov & Schoar [DOI 10.1016/j.jfineco.2019.07.001](https://doi.org/10.1016/j.jfineco.2019.07.001) requires multi-venue legs).
 
-**BTC/USD** spot momentum / directional BTC work is owned by **`btc-spot-tsmom-4h`**. One owner per symbol; do not move BTC to attention or parallel BTC long specs ([week-trader-plan.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/week-trader-plan.md) §5.4 C1 sketch cites Liu & Tsyvinski, [DOI 10.1093/rfs/hhaa113](https://doi.org/10.1093/rfs/hhaa113)).
+---
+
+## C1 — investor attention long BTC → **`mstr-equity-tsmom-1d`**
+
+**Status:** **active** — **MSTR** equity daily TSMOM (crypto-adjacent single name). **Not** BTC/USD (owned by `btc-spot-tsmom-4h`) and **not** Google Trends attention. Moskowitz, Ooi & Pedersen TSMOM [DOI 10.1016/j.jfineco.2011.11.003](https://doi.org/10.1016/j.jfineco.2011.11.003). *(Dropped after spec gate fail: `coin-positive-attention-1d` — Trends/attention spec gate.)*
 
 ---
 
 ## Process / risk / execution / validation
 
-**Status:** not-a-strategy
-
-Sizing, vol targeting, costs, walk-forward, paper parity, and regime overlays are **disciplines**, not entry signals ([research-process-risk.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/research-process-risk.md); [algorithms-and-paper-trade.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/algorithms-and-paper-trade.md) Part A). Example **C7** (vol-managed overlay) is an overlay on a base rule, not a standalone Alpaca backlog item.
+**Status:** not-a-strategy — discipline map only ([research-process-risk.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/research-process-risk.md)).
 
 ---
 
 ## Mean reversion (family)
 
-**Status:** active build — **`dia-mean-reversion-1d`** (DIA daily long-only **loser leg**; Israel & Moskowitz long-only scope). Not parked for lack of equity shorts.
-
-**Still parked (crypto):** BTC/alt spot MR — contested dynamics and **no crypto short** on Alpaca ([research-gap-fill.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/research-gap-fill.md) §2).
+**Status:** active — **`dia-mean-reversion-1d`**. Crypto spot MR still parked (no crypto short).
 
 ---
 
 ## Pairs / statistical arbitrage (family)
 
-**Status:** active build — **`tlt-ief-pairs-1d`** (TLT/IEF daily spread convergence; Gatev-style distance pairs). ETB Treasury ETFs on Alpaca paper with **equity shorting enabled** — not parked for lack of a short leg.
-
-**Still parked:** Crypto / perp **basis** pairs ([research-premia-crypto.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/research-premia-crypto.md) carry class) and multi-venue arb.
+**Status:** active — **`tlt-ief-pairs-1d`**. Crypto/perp basis pairs still parked.
 
 ---
 
 ## Cross-sectional momentum (family)
 
-**Status:** active build — **`eem-xlf-csmom-1d`** (long-only relative winner between **EEM** and **XLF** only; Israel & Moskowitz 2013 long-only momentum; Jegadeesh–Titman rank logic). Does **not** use SPY, IWM, GLD, BTC, ETH, DIA, TLT, or IEF.
+**Status:** active — **`eem-xlf-csmom-1d`**.
 
 ---
 
-## C3 — network adoption tilt
+## C3 — network adoption tilt → **`slv-negative-attention-1d`**
 
-**Status:** parked
-
-Published construction uses **on-chain / network** factors with vendor latency and revision risk ([algorithms-and-paper-trade.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/algorithms-and-paper-trade.md) C3; Liu & Tsyvinski [DOI 10.1093/rfs/hhaa113](https://doi.org/10.1093/rfs/hhaa113)). Honest replication needs **timestamped vendor data**, not free Alpaca OHLCV alone; multi-coin versions need **PIT listing** rules ([research-gap-fill.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/research-gap-fill.md) §5).
+**Status:** **active** — **SLV** negative-attention ratio via **free Google Trends**, **not** paid on-chain network factors (Liu & Tsyvinski network metrics require vendor on-chain data [DOI 10.1093/rfs/hhaa113](https://doi.org/10.1093/rfs/hhaa113)).
 
 ---
 
-## C4 — cross-sectional MAX lottery reversal (alts)
+## C4 — cross-sectional MAX lottery reversal (alts) → **`xlp-xlk-csmom-1d`**
 
-**Status:** parked
-
-Spec is **long lowest MAX quintile, short highest** among ~20 alts ([algorithms-and-paper-trade.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/algorithms-and-paper-trade.md) C4; Grobys & Junttila, [DOI 10.1016/j.intfin.2021.101289](https://doi.org/10.1016/j.intfin.2021.101289)). Requires **short** leg and a **point-in-time alt universe** — not available free on Alpaca paper.
+**Status:** **active** — long-only **XLP vs XLK** relative winner (Israel & Moskowitz 2013 long-only CSMOM [DOI 10.1016/j.jfineco.2012.11.005](https://doi.org/10.1016/j.jfineco.2012.11.005)). **Not** alt MAX short quintiles. *(Dropped after spec gate fail: `xbi-max-reversal-short-1d` — single-name MAX short spec gate.)*
 
 ---
 
-## C5 — cross-sectional size (alts)
+## C5 — cross-sectional size (alts) → **`vb-equity-tsmom-1d`**
 
-**Status:** parked
-
-**Long small-cap / short large-cap** quintiles among liquid alts ([algorithms-and-paper-trade.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/algorithms-and-paper-trade.md) C5; Liu, Tsyvinski & Wu, [DOI 10.1111/jofi.13119](https://doi.org/10.1111/jofi.13119)). Needs **short**, **market-cap panel**, and **PIT delist** hygiene ([research-gap-fill.md](/cursor/stores/bc-01a1908d-055d-7ab4-b664-480c480c321a/docs/research-gap-fill.md) §5) — off v1 Alpaca-only, free-data rail.
+**Status:** **active** — **long-only VB** small-cap ETF daily TSMOM. **Not** long-small/short-large alt quintiles (Liu, Tsyvinski & Wu alt size [DOI 10.1111/jofi.13119](https://doi.org/10.1111/jofi.13119) needs PIT cap panel + shorts).

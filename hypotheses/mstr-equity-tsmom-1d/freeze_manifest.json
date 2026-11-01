@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "mstr-equity-tsmom-1d",
+  "description": "Bind HYPOTHESIS.md, full preregistration.json, and data manifest before backtest or Jev.",
+  "frozen_at_utc": "2026-11-01T02:27:07Z",
+  "artifacts": {
+    "HYPOTHESIS.md": "sha256:f14b262ea5399b18ce6c940e2218d108aebea5ad5ab1b33d5b7d16704b5948d6",
+    "preregistration.json": "sha256:4b21c3f05c107473bb7b0cf886f7636adb01f34bdc11cbec53fc91a7cee959b4",
+    "data_manifest": {
+      "path": "data/manifests/mstr-equity-tsmom-1d-alpaca.yaml",
+      "sha256": "sha256:db62cc619a50591267a4b57b8970f399b472cda8a7b49de04dadddfda76133cd"
+    }
+  }
+}

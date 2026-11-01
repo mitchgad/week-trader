@@ -1,0 +1,8 @@
+{
+  "symbol": "QQQ",
+  "side": "buy",
+  "qty": "7",
+  "type": "market",
+  "time_in_force": "day",
+  "reference_price_usd": 690.49
+}

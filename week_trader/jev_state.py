@@ -136,6 +136,7 @@ def _spec_fields(hypothesis_id: str, prereg: dict[str, Any]) -> dict[str, Any]:
     engine_parity = bool((prereg.get("engine_parity") or {}).get("required_before_promotion"))
     attention_fields = _attention_manifest_fields(manifest_path)
     equity_gld_only = _equity_gld_contract(prereg, manifest_path)
+    equity_attention_single = _equity_attention_single_symbol(prereg, manifest_path)
     manifest_symbol_matches = _manifest_single_symbol_matches(prereg, manifest_path)
     return {
         "venue_contract_spot_only": spot_only,
@@ -153,6 +154,7 @@ def _spec_fields(hypothesis_id: str, prereg: dict[str, Any]) -> dict[str, Any]:
         "primary_citations_present": _hypothesis_primary_citations_present(hypothesis_id),
         **attention_fields,
         **equity_gld_only,
+        **equity_attention_single,
         **proof,
     }
 
@@ -178,6 +180,10 @@ def _attention_manifest_fields(manifest_path: Path | None) -> dict[str, Any]:
     keywords_ok = isinstance(attention.get("negative_keyword"), str) and isinstance(
         attention.get("baseline_keyword"), str
     )
+    if attention.get("mode") == "positive_ratio":
+        keywords_ok = isinstance(attention.get("positive_keyword"), str) and isinstance(
+            attention.get("baseline_keyword"), str
+        )
     return {
         "attention_manifest_present": True,
         "free_attention_vendor_bound": vendor_ok and keywords_ok,
@@ -208,6 +214,30 @@ def _equity_gld_contract(prereg: dict[str, Any], manifest_path: Path | None) -> 
             and str(symbols[0]).strip().upper() == "GLD"
         )
     return {"venue_contract_equity_gld_only": allowed_gld and manifest_gld}
+
+
+def _equity_attention_single_symbol(prereg: dict[str, Any], manifest_path: Path | None) -> dict[str, bool]:
+    venue = prereg.get("venue_contract")
+    if not isinstance(venue, dict):
+        return {"venue_contract_equity_attention_single": False}
+    allowed = venue.get("allowed_symbols")
+    if not isinstance(allowed, list) or len(allowed) != 1:
+        return {"venue_contract_equity_attention_single": False}
+    if venue.get("instrument_class") != "equity" or venue.get("paper_venue") != "alpaca_paper":
+        return {"venue_contract_equity_attention_single": False}
+    manifest_ok = False
+    if manifest_path is not None and manifest_path.is_file():
+        manifest = load_data_manifest(manifest_path)
+        attention = manifest.get("attention")
+        symbols = manifest.get("universe", {}).get("symbols")
+        manifest_ok = (
+            isinstance(attention, dict)
+            and attention.get("vendor") == "google_trends_free"
+            and isinstance(symbols, list)
+            and len(symbols) == 1
+            and str(symbols[0]).upper() == str(allowed[0]).upper()
+        )
+    return {"venue_contract_equity_attention_single": manifest_ok}
 
 
 def _proof_contract_fields(prereg: dict[str, Any], hypothesis_id: str) -> dict[str, Any]:
@@ -317,7 +347,7 @@ def _hypothesis_long_only_loser_leg_documented(hypothesis_id: str) -> bool:
 
 
 def _hypothesis_long_only_csmom_documented(hypothesis_id: str) -> bool:
-    if hypothesis_id != "eem-xlf-csmom-1d":
+    if not hypothesis_id.endswith("-csmom-1d"):
         return False
     path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
     if not path.is_file():
@@ -467,6 +497,8 @@ def _trade_gate_fields(hypothesis_id: str, gate: str) -> dict[str, Any]:
     intent_side = str(intent.get("side", "")).lower()
     signal_matches = False
     if last_side == "long" and intent_side == "buy":
+        signal_matches = True
+    if last_side == "short" and intent_side == "sell":
         signal_matches = True
     if last_side == "flat" and intent_side in {"sell", "buy"}:
         signal_matches = False
