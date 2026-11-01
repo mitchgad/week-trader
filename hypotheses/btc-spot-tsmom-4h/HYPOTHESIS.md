@@ -53,7 +53,7 @@ Code enforcement (not narrative): manifest `instrument_class: crypto_spot` with 
 
 ## Costs
 
-Bound manifest `data/manifests/btc-spot-tsmom-4h-alpaca.yaml` (`costs.fee_bps_per_side`, `costs.slippage_bps_per_side`). Backtest and promotion require **engine parity** per preregistration before metrics count.
+Bound manifest `data/manifests/btc-spot-tsmom-4h-alpaca.yaml` (`costs.fee_bps_per_side`, `costs.slippage_bps_per_side`; **`funding_series_id` must stay null** for spot). **Gate 2 backtest** (engine parity + signed backtest gate) is for **kill/advance-to-paper diagnostics only** — backtest metrics **do not** satisfy Gate 3 operational proof. **Gate 3 proof** is Alpaca paper spot forward only (`proof_contract` in preregistration).
 
 ## Kill conditions (algorithms A.6 — pre-registered)
 

@@ -107,7 +107,7 @@ def _spec_fields(hypothesis_id: str, prereg: dict[str, Any]) -> dict[str, Any]:
         and manifest_funding_null
     )
     disconfirmers = _hypothesis_disconfirmers_ok(hypothesis_id)
-    proof = _proof_contract_fields(prereg)
+    proof = _proof_contract_fields(prereg, hypothesis_id)
     cost_ok = False
     try:
         manifest_path = resolve_manifest_for_hypothesis(hypothesis_id, prereg)
@@ -125,13 +125,22 @@ def _spec_fields(hypothesis_id: str, prereg: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _proof_contract_fields(prereg: dict[str, Any]) -> dict[str, Any]:
+def _proof_contract_fields(prereg: dict[str, Any], hypothesis_id: str) -> dict[str, Any]:
     proof = prereg.get("proof_contract")
+    venue = prereg.get("venue_contract")
+    if not isinstance(venue, dict):
+        venue = {}
     if not isinstance(proof, dict):
         return {
             "proof_contract_present": False,
             "forbidden_perp_funding_proof_in_prereg": False,
             "promotion_proof_alpaca_spot_forward_only": False,
+            "venue_contract_instrument_class": venue.get("instrument_class"),
+            "venue_contract_paper_venue": venue.get("paper_venue"),
+            "proof_forbidden_evidence_types": [],
+            "perp_funding_proof_is_disconfirmer_kill": False,
+            "backtest_metrics_do_not_satisfy_paper_proof": False,
+            "spec_validation_proof_excerpt": None,
         }
     forbidden = proof.get("forbidden_promotion_evidence")
     if not isinstance(forbidden, list):
@@ -150,7 +159,44 @@ def _proof_contract_fields(prereg: dict[str, Any]) -> dict[str, Any]:
         "proof_contract_present": True,
         "forbidden_perp_funding_proof_in_prereg": forbids_perp,
         "promotion_proof_alpaca_spot_forward_only": forward_only and spot_proof_allowed,
+        "venue_contract_instrument_class": venue.get("instrument_class"),
+        "venue_contract_paper_venue": venue.get("paper_venue"),
+        "proof_forbidden_evidence_types": [item for item in forbidden if isinstance(item, str)],
+        "perp_funding_proof_is_disconfirmer_kill": _hypothesis_perp_proof_kill_documented(
+            hypothesis_id
+        ),
+        "backtest_metrics_do_not_satisfy_paper_proof": bool(
+            proof.get("backtest_metrics_do_not_satisfy_paper_proof")
+        ),
+        "spec_validation_proof_excerpt": _validation_proof_excerpt(hypothesis_id),
     }
+
+
+def _hypothesis_perp_proof_kill_documented(hypothesis_id: str) -> bool:
+    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
+    if not path.is_file():
+        return False
+    text = path.read_text(encoding="utf-8").lower()
+    if "## disconfirmers" not in text:
+        return False
+    dis_section = text[text.index("## disconfirmers") :]
+    return "perp funding" in dis_section and ("kill" in dis_section or "falsif" in dis_section)
+
+
+def _validation_proof_excerpt(hypothesis_id: str) -> str | None:
+    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
+    if not path.is_file():
+        return None
+    text = path.read_text(encoding="utf-8")
+    marker = "## Validation and promotion proof"
+    lower = text.lower()
+    if marker.lower() not in lower:
+        return None
+    start = lower.index(marker.lower())
+    section = text[start : start + 1200]
+    lines = [line.strip() for line in section.splitlines() if line.strip()]
+    excerpt = " ".join(lines[:8])
+    return excerpt[:800] if excerpt else None
 
 
 def _hypothesis_disconfirmers_ok(hypothesis_id: str) -> bool:

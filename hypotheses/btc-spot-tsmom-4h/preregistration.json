@@ -80,6 +80,7 @@
   },
   "proof_contract": {
     "operational_validation": "alpaca_paper_crypto_spot_forward_only",
+    "backtest_metrics_do_not_satisfy_paper_proof": true,
     "forbidden_promotion_evidence": [
       "crypto_perp_funding_pnl",
       "binance_futures_testnet",
