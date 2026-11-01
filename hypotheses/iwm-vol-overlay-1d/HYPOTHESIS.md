@@ -2,7 +2,7 @@
 
 **Family:** Volatility-managed **long-only overlay** on slow **time-series momentum** for **IWM** daily bars (Moreira & Muir scaling on a Jegadeesh–Titman-style slow base). **Not** crypto TSMOM, not pairs, not carry.
 
-**Status:** **Dropped** (2026-11-01). Moreira & Muir ([DOI 10.1111/jofi.12513](https://doi.org/10.1111/jofi.12513)) use weight **σ*/realized vol**; this shared Alpaca **paper account caps execution at 1.0× the strategy slice** (5000 USD). After the signal was aligned to that weight (with **`w_exec = min(w_t, 1.0)`**), Jev spec question **`vol_overlay_long_only_honest`** fell from **0.61** to **0.59** (below 0.65). **No paper-forward, no orders.** Signed gate logs remain under `gates/iwm-vol-overlay-1d/`.
+**Status:** **Dropped** (2026-11-01). **Unproven** Moreira & Muir ([DOI 10.1111/jofi.12513](https://doi.org/10.1111/jofi.12513)) portability test — weight **σ*/realized vol** vs paper execution capped at **1.0× the strategy slice** (5000 USD). After the signal was aligned to that weight ( **`w_exec = min(w_t, 1.0)`** ), Jev **`vol_overlay_long_only_honest`** fell from **0.61** to **0.59** (below 0.65). **No paper-forward, no orders.** Signed gate logs remain under `gates/iwm-vol-overlay-1d/`.
 
 ## Paper long-only honesty (operational)
 
