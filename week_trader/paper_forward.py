@@ -168,6 +168,13 @@ def record_signal_from_live_bars(hypothesis_id: str) -> dict[str, Any]:
         signal["symbols"] = list(closes_map.keys())
         signal["bar_count"] = min(len(v) for v in closes_map.values())
         return record_signal(hypothesis_id, signal)
+    if interval == "1Day" and hypothesis_id == "tlt-ief-pairs-1d":
+        closes_map = fetch_live_equity_daily_closes_map(hypothesis_id)
+        signal = evaluate_tlt_ief_pairs_1d_signal(closes_map, hypothesis_id=hypothesis_id)
+        signal["closes_source"] = "alpaca_live_1d"
+        signal["symbols"] = list(closes_map.keys())
+        signal["bar_count"] = min(len(v) for v in closes_map.values())
+        return record_signal(hypothesis_id, signal)
     symbol = manifest_trading_symbol(hypothesis_id)
     if interval == "4h":
         closes = fetch_live_4h_closes(hypothesis_id)
@@ -291,6 +298,63 @@ def evaluate_eem_xlf_csmom_1d_signal(
         "side": "long",
         "target_symbol": winner,
         "last_closes": {sym: closes_by_symbol[sym][-1] for sym in closes_by_symbol},
+    }
+
+
+def evaluate_tlt_ief_pairs_1d_signal(
+    closes_by_symbol: dict[str, list[float]], *, hypothesis_id: str
+) -> dict[str, Any]:
+    """Distance-style spread z-score on log(TLT/IEF); convergence trade when |z| large."""
+    lookback = 60
+    entry_z = 2.0
+    exit_z = 0.5
+    tlt = closes_by_symbol.get("TLT")
+    ief = closes_by_symbol.get("IEF")
+    if tlt is None or ief is None:
+        raise PaperForwardError("TLT and IEF closes required for pairs signal")
+    if len(tlt) < lookback + 1 or len(ief) < lookback + 1:
+        raise PaperForwardError(f"need {lookback + 1} daily closes for pairs z-score")
+    ratios: list[float] = []
+    for i in range(-lookback, 0):
+        if tlt[i] <= 0 or ief[i] <= 0:
+            raise PaperForwardError("non-positive close in pairs window")
+        ratios.append(math.log(tlt[i] / ief[i]))
+    current = ratios[-1]
+    mean = sum(ratios) / len(ratios)
+    var = sum((r - mean) ** 2 for r in ratios) / max(len(ratios) - 1, 1)
+    std = math.sqrt(var) if var > 0 else 0.0
+    spread_z = (current - mean) / std if std > 0 else 0.0
+    if abs(spread_z) <= exit_z:
+        return {
+            "strategy": hypothesis_id,
+            "side": "flat",
+            "spread_z": spread_z,
+            "lookback_days": lookback,
+        }
+    if spread_z > entry_z:
+        return {
+            "strategy": hypothesis_id,
+            "side": "pairs",
+            "long_symbol": "IEF",
+            "short_symbol": "TLT",
+            "spread_z": spread_z,
+            "lookback_days": lookback,
+        }
+    if spread_z < -entry_z:
+        return {
+            "strategy": hypothesis_id,
+            "side": "pairs",
+            "long_symbol": "TLT",
+            "short_symbol": "IEF",
+            "spread_z": spread_z,
+            "lookback_days": lookback,
+        }
+    return {
+        "strategy": hypothesis_id,
+        "side": "flat",
+        "spread_z": spread_z,
+        "lookback_days": lookback,
+        "note": "inside entry band",
     }
 
 
