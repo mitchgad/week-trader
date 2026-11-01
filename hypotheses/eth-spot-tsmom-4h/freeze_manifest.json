@@ -1,0 +1,14 @@
+{
+  "artifacts": {
+    "HYPOTHESIS.md": "sha256:c12ce4b4a1c76f01770ca9d324920f68556e03dac90813ca33117ec5e8b5e526",
+    "data_manifest": {
+      "path": "data/manifests/eth-spot-tsmom-4h-alpaca.yaml",
+      "sha256": "sha256:28148f7bc4fd1be2544b051f9167a42468f30851b8d15fdec1cc51038795a3d7"
+    },
+    "preregistration.json": "sha256:c77a9a6611b7551c22b0ceb90592ea6cf2298457a0a7cb061a647d13ed063ac4"
+  },
+  "description": "Bind HYPOTHESIS.md, full preregistration.json, and data manifest before backtest or Jev.",
+  "frozen_at_utc": "2026-11-01T01:31:29Z",
+  "hypothesis_id": "eth-spot-tsmom-4h",
+  "schema_version": 1
+}

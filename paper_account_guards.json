@@ -4,6 +4,8 @@
   "symbol_owners": {
     "BTCUSD": "btc-spot-tsmom-4h",
     "BTC/USD": "btc-spot-tsmom-4h",
+    "ETHUSD": "eth-spot-tsmom-4h",
+    "ETH/USD": "eth-spot-tsmom-4h",
     "XLCIUSD": "_template",
     "XLCI/USD": "_template"
   },
@@ -11,6 +13,10 @@
     "btc-spot-tsmom-4h": {
       "max_notional_usd": 5000,
       "fill_tag": "wt-btc-spot-tsmom-4h"
+    },
+    "eth-spot-tsmom-4h": {
+      "max_notional_usd": 2500,
+      "fill_tag": "wt-eth-spot-tsmom-4h"
     },
     "_template": {
       "max_notional_usd": 5000,

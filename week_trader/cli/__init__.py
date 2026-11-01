@@ -105,7 +105,7 @@ def main_paper_forward(argv: list[str] | None = None) -> None:
                 if not isinstance(closes_raw, list):
                     _exit_fail("CLOSES file must be a JSON array of floats")
                 closes = [float(x) for x in closes_raw]
-                signal = evaluate_tsmom_4h_signal(closes)
+                signal = evaluate_tsmom_4h_signal(closes, hypothesis_id=hypothesis_id)
                 print(record_signal(hypothesis_id, signal))
         elif action == "alerts":
             print(check_forward_anomalies(hypothesis_id))

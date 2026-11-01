@@ -118,6 +118,7 @@ def _spec_fields(hypothesis_id: str, prereg: dict[str, Any]) -> dict[str, Any]:
     disconfirmers = _hypothesis_disconfirmers_ok(hypothesis_id)
     proof = _proof_contract_fields(prereg, hypothesis_id)
     cost_ok = False
+    manifest_path: Path | None = None
     try:
         manifest_path = resolve_manifest_for_hypothesis(hypothesis_id, prereg)
         manifest = load_data_manifest(manifest_path)
@@ -130,6 +131,9 @@ def _spec_fields(hypothesis_id: str, prereg: dict[str, Any]) -> dict[str, Any]:
         "disconfirmers_documented": disconfirmers,
         "manifest_cost_block_present": cost_ok,
         "engine_parity_required": engine_parity,
+        "manifest_single_spot_symbol_matches": _manifest_single_symbol_matches(prereg, manifest_path),
+        "horizon_thinness_acknowledged": _hypothesis_horizon_thinness_acknowledged(hypothesis_id),
+        "primary_citations_present": _hypothesis_primary_citations_present(hypothesis_id),
         **proof,
     }
 
@@ -300,23 +304,43 @@ def _paper_account_book_fields(account_book: Any) -> dict[str, Any]:
 def _trade_gate_fields(hypothesis_id: str, gate: str) -> dict[str, Any]:
     if gate != "trade":
         return {}
-    intent_path = repo_root() / "paper" / hypothesis_id / "intents" / "market-long-btcusd.json"
-    if not intent_path.is_file():
+    intents_dir = repo_root() / "paper" / hypothesis_id / "intents"
+    intent_path: Path | None = None
+    intent_id: str | None = None
+    if intents_dir.is_dir():
+        for path in sorted(intents_dir.glob("*.json")):
+            if path.name.startswith("_"):
+                continue
+            intent_path = path
+            intent_id = path.stem
+            break
+    if intent_path is None or not intent_path.is_file():
         return {
             "order_intent_present": False,
             "order_intent_symbol": None,
             "order_intent_side": None,
             "order_intent_qty": None,
+            "signal_matches_intent": False,
         }
     intent = load_json(intent_path)
     if not isinstance(intent, dict):
-        return {"order_intent_present": False}
+        return {"order_intent_present": False, "signal_matches_intent": False}
+    last_side = read_last_signal_side(
+        repo_root() / "paper" / hypothesis_id / "forward" / "events.jsonl"
+    )
+    intent_side = str(intent.get("side", "")).lower()
+    signal_matches = False
+    if last_side == "long" and intent_side == "buy":
+        signal_matches = True
+    if last_side == "flat" and intent_side in {"sell", "buy"}:
+        signal_matches = False
     return {
         "order_intent_present": True,
-        "order_intent_id": "market-long-btcusd",
+        "order_intent_id": intent_id,
         "order_intent_symbol": intent.get("symbol"),
         "order_intent_side": intent.get("side"),
         "order_intent_qty": intent.get("qty"),
+        "signal_matches_intent": signal_matches,
     }
 
 
@@ -395,6 +419,42 @@ def _hypothesis_has_sections(hypothesis_id: str) -> bool:
 
 def _hypothesis_has_disconfirmers(hypothesis_id: str) -> bool:
     return _hypothesis_disconfirmers_ok(hypothesis_id)
+
+
+def _manifest_single_symbol_matches(prereg: dict[str, Any], manifest_path: Path | None) -> bool:
+    venue = prereg.get("venue_contract")
+    if not isinstance(venue, dict):
+        return False
+    allowed = venue.get("allowed_symbols")
+    if not isinstance(allowed, list) or len(allowed) != 1:
+        return False
+    if manifest_path is None or not manifest_path.is_file():
+        return False
+    manifest = load_data_manifest(manifest_path)
+    universe = manifest.get("universe")
+    if not isinstance(universe, dict):
+        return False
+    symbols = universe.get("symbols")
+    if not isinstance(symbols, list) or len(symbols) != 1:
+        return False
+    return str(symbols[0]).upper().replace("/", "") == str(allowed[0]).upper().replace("/", "")
+
+
+def _hypothesis_horizon_thinness_acknowledged(hypothesis_id: str) -> bool:
+    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
+    if not path.is_file():
+        return False
+    text = path.read_text(encoding="utf-8").lower()
+    markers = ("unproven", "portability test", "not a production signal", "no edge claimed")
+    return any(marker in text for marker in markers)
+
+
+def _hypothesis_primary_citations_present(hypothesis_id: str) -> bool:
+    path = hypothesis_dir(hypothesis_id) / "HYPOTHESIS.md"
+    if not path.is_file():
+        return False
+    text = path.read_text(encoding="utf-8").lower()
+    return "doi.org" in text or "nber" in text or "10." in text
 
 
 def _age_hours(timestamp_utc: str) -> float | None:

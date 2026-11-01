@@ -1,0 +1,43 @@
+manifest_version: 1
+dataset_id: eth-spot-tsmom-4h-alpaca
+as_of_utc: "2026-11-01T00:00:00Z"
+
+universe:
+  point_in_time: true
+  symbols:
+    - ETH/USD
+  liquidity_filter:
+    min_adv_usd_30d: 500000
+    lookback_days: 30
+
+bars:
+  timezone: UTC
+  interval: 4h
+  signal_bar_close: true
+  order_default: next_bar_open
+
+instrument_class: crypto_spot
+
+venue_contract:
+  execution_venue: alpaca_crypto
+  paper_venue: alpaca_paper
+  notes: >
+    Alpaca paper simulates US equities and crypto spot only — not perp funding or ADL.
+    ETH/USD spot only for this hypothesis.
+
+costs:
+  fee_bps_per_side: 10
+  slippage_bps_per_side: 5
+  spread_model: half_spread_fixed_bps
+  funding_interval_hours: null
+  funding_series_id: null
+
+pit_rules:
+  listing: include_from_first_tradable_timestamp
+  delist: exclude_from_halt_timestamp
+  survivorship_report: full_pit_vs_live_universe_side_by_side
+
+checksum:
+  method: sha256
+  value: "0000000000000000000000000000000000000000000000000000000000000000"
+  note: Replace after materializing dataset off-repo
