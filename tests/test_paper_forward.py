@@ -19,14 +19,14 @@ from week_trader.util import repo_root
 
 def test_evaluate_tsmom_4h_long_when_formation_positive() -> None:
     closes = [100.0, 101.0, 102.0, 103.0, 104.0, 105.0, 106.0, 107.0]
-    signal = evaluate_tsmom_4h_signal(closes)
+    signal = evaluate_tsmom_4h_signal(closes, hypothesis_id="btc-spot-tsmom-4h")
     assert signal["side"] == "long"
     assert signal["formation_log_return"] > 0
 
 
 def test_evaluate_tsmom_4h_flat_when_formation_non_positive() -> None:
     closes = [107.0, 106.0, 105.0, 104.0, 103.0, 102.0, 101.0, 100.0]
-    signal = evaluate_tsmom_4h_signal(closes)
+    signal = evaluate_tsmom_4h_signal(closes, hypothesis_id="btc-spot-tsmom-4h")
     assert signal["side"] == "flat"
 
 

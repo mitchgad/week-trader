@@ -100,16 +100,16 @@ def fetch_live_4h_closes(hypothesis_id: str, *, min_bars: int = 8) -> list[float
 def record_signal_from_live_bars(hypothesis_id: str) -> dict[str, Any]:
     symbol = manifest_crypto_symbol(hypothesis_id)
     closes = fetch_live_4h_closes(hypothesis_id)
-    signal = evaluate_tsmom_4h_signal(closes)
+    signal = evaluate_tsmom_4h_signal(closes, hypothesis_id=hypothesis_id)
     signal["closes_source"] = "alpaca_live_4h"
     signal["symbol"] = symbol
     signal["bar_count"] = len(closes)
     return record_signal(hypothesis_id, signal)
 
 
-def evaluate_tsmom_4h_signal(closes: list[float]) -> dict[str, Any]:
+def evaluate_tsmom_4h_signal(closes: list[float], *, hypothesis_id: str) -> dict[str, Any]:
     """
-    btc-spot-tsmom-4h signal at bar close (formation = sum of log returns over prior 6 bars).
+    4h TSMOM signal at bar close (formation = sum of log returns over prior 6 bars).
     Observation only — orders still require paper-order + trade gate.
     """
     formation_bars = 6
@@ -119,7 +119,7 @@ def evaluate_tsmom_4h_signal(closes: list[float]) -> dict[str, Any]:
     formation_log_return = sum(math.log(window[i] / window[i - 1]) for i in range(1, len(window)))
     side = "long" if formation_log_return > 0 else "flat"
     return {
-        "strategy": "btc-spot-tsmom-4h",
+        "strategy": hypothesis_id,
         "formation_bars": formation_bars,
         "formation_log_return": formation_log_return,
         "side": side,

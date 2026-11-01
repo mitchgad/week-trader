@@ -1,0 +1,60 @@
+{
+  "freeze_manifest_hash": "8a1f6f966f5f756b3e670ade53120a81177674fa1a57f714f7386c1c4e4f75ac",
+  "gate": "spec",
+  "hypothesis_id": "eth-spot-tsmom-4h",
+  "log_signature": "2bd92c806bdb984fa44d902a4e690b6dd0f2f67304d2da18dede010801066185",
+  "model_id": "jev-1.14.0",
+  "pass": true,
+  "request_hash": "a6740803ca52ed4b58a69a8c9acfd3583a8c04b7f81c5bdffc2cf54ab5a6dd40",
+  "response": {
+    "answers": {
+      "momentum_portability_not_settled": {
+        "noul": 0.76,
+        "type": "noul"
+      },
+      "spec_falsifiable_eth_spot": {
+        "noul": 0.78,
+        "type": "noul"
+      },
+      "spot_not_perp_eth": {
+        "noul": 0.91,
+        "type": "noul"
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 1353,
+      "output_tokens": 72
+    }
+  },
+  "response_body_hash": "590ba628076cf97702f104bb7a0e5ad4245d235d01920ec56f4d6d36ac8f99c4",
+  "state_hash": "55a09bab7a0ad81e5aaf7bc33d39bfabab73f6899e03fa65590aee71b0d247e4",
+  "threshold_compare": {
+    "comparisons": [
+      {
+        "min_required": 0.65,
+        "pass": true,
+        "probability": 0.78,
+        "question_id": "spec_falsifiable_eth_spot",
+        "type": "noul"
+      },
+      {
+        "min_required": 0.65,
+        "pass": true,
+        "probability": 0.76,
+        "question_id": "momentum_portability_not_settled",
+        "type": "noul"
+      },
+      {
+        "min_required": 0.65,
+        "pass": true,
+        "probability": 0.91,
+        "question_id": "spot_not_perp_eth",
+        "type": "noul"
+      }
+    ],
+    "gate": "spec",
+    "pass": true
+  },
+  "timestamp_utc": "2026-11-01T01:31:31Z"
+}
