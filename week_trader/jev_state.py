@@ -638,44 +638,39 @@ def _read_last_signal_payload(events_path: Path) -> dict[str, Any] | None:
 def _trade_gate_fields(hypothesis_id: str, gate: str) -> dict[str, Any]:
     if gate != "trade":
         return {}
-    intents_dir = repo_root() / "paper" / hypothesis_id / "intents"
-    intent_path: Path | None = None
-    intent_id: str | None = None
-    if intents_dir.is_dir():
-        for path in sorted(intents_dir.glob("*.json")):
-            if path.name.startswith("_"):
-                continue
-            intent_path = path
-            intent_id = path.stem
-            break
-    if intent_path is None or not intent_path.is_file():
-        return {
-            "order_intent_present": False,
-            "order_intent_symbol": None,
-            "order_intent_side": None,
-            "order_intent_qty": None,
-            "signal_matches_intent": False,
-        }
-    intent = load_json(intent_path)
-    if not isinstance(intent, dict):
-        return {"order_intent_present": False, "signal_matches_intent": False}
+    from week_trader.signal_intent import signal_matches_order_intent
+
+    empty_intent_fields: dict[str, Any] = {
+        "order_intent_present": False,
+        "order_intent_symbol": None,
+        "order_intent_side": None,
+        "order_intent_qty": None,
+        "signal_matches_intent": False,
+    }
     last_signal = _read_last_signal_payload(
         repo_root() / "paper" / hypothesis_id / "forward" / "events.jsonl"
     )
-    from week_trader.signal_intent import signal_matches_order_intent
-
     if last_signal is None:
-        signal_matches = False
-    else:
-        signal_matches = signal_matches_order_intent(last_signal, intent)
-    return {
-        "order_intent_present": True,
-        "order_intent_id": intent_id,
-        "order_intent_symbol": intent.get("symbol"),
-        "order_intent_side": intent.get("side"),
-        "order_intent_qty": intent.get("qty"),
-        "signal_matches_intent": signal_matches,
-    }
+        return empty_intent_fields
+    intents_dir = repo_root() / "paper" / hypothesis_id / "intents"
+    if not intents_dir.is_dir():
+        return empty_intent_fields
+    for path in sorted(intents_dir.glob("*.json")):
+        if path.name.startswith("_"):
+            continue
+        intent = load_json(path)
+        if not isinstance(intent, dict):
+            continue
+        if signal_matches_order_intent(last_signal, intent):
+            return {
+                "order_intent_present": True,
+                "order_intent_id": path.stem,
+                "order_intent_symbol": intent.get("symbol"),
+                "order_intent_side": intent.get("side"),
+                "order_intent_qty": intent.get("qty"),
+                "signal_matches_intent": True,
+            }
+    return empty_intent_fields
 
 
 def _account_book_fresh(age_hours: float | None, account_book: Any) -> bool:
