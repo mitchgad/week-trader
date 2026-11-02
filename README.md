@@ -17,6 +17,7 @@ Project specs live in the Week trader Project store (`docs/week-trader-plan.md`,
 | Jev gates | **Blocked in CI/agents** until `GATE_LOG_HMAC_SECRET` is injected (TypeSafe calls need `TYPESAFE_API_KEY` + HMAC to sign logs). No hand-written `gates/` JSON |
 | Paper forward loop | `paper-forward ID=<hypothesis>` monitors account/orders; `ACTION=signal CLOSES=live` records the signal then may run trade gate + `paper-order`; `CHECK_ALERTS=1` writes `alerts.json` |
 | Scheduled forward | GitHub Actions `paper-forward-schedule` (BTC 4h + hourly monitor) plus per-hypothesis `paper-forward-*.yml` workflows |
+| Forward health | `run-check` (hourly `paper-forward-health` workflow) flags stale/missing forward snapshots, workflow failures, missing `wt-` orders after gate pass, and missing Actions secrets (#43) |
 
 ### Forward-paper hypotheses (2026-11-02)
 
@@ -52,6 +53,7 @@ paper-forward ID=btc-spot-tsmom-4h --dry-run
 paper-forward ID=btc-spot-tsmom-4h ACTION=signal CLOSES=live
 paper-forward ID=spy-equity-tsmom-1d ACTION=signal CLOSES=live
 paper-forward ID=btc-spot-tsmom-4h ACTION=alerts
+run-check
 ```
 
 Events append to `paper/<id>/forward/events.jsonl`; latest snapshot in `status.json` (includes **`pnl_view`**, **`forward_evidence`** with PSR / MinTRL / deflated Sharpe vs ~14 running strategies, and **`not_enough_data_yet`** until MinTRL is met); anomaly report in `alerts.json`.

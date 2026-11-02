@@ -1,0 +1,38 @@
+name: paper-forward-health
+
+on:
+  schedule:
+    # Hourly health summary (after :10 UTC to follow forward cron ticks)
+    - cron: "10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Gate 4 closed
+        run: make gate4-closed
+      - name: Paper forward scheduled health check
+        env:
+          ALPACA_PAPER_KEY: ${{ secrets.ALPACA_PAPER_KEY }}
+          ALPACA_PAPER_SECRET: ${{ secrets.ALPACA_PAPER_SECRET }}
+        run: |
+          set -euo pipefail
+          run-check
+      - name: Upload health report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-forward-health
+          path: paper/_shared/forward_health.json
+          if-no-files-found: ignore

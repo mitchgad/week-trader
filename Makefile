@@ -1,4 +1,4 @@
-.PHONY: install lint-jev-questions gate4-closed data-validate verify-backtest engine-parity jev-gate test ci-grep-typesafe
+.PHONY: install lint-jev-questions gate4-closed data-validate verify-backtest engine-parity jev-gate run-check test ci-grep-typesafe
 
 install:
 	pip install -e ".[dev]"
@@ -20,6 +20,9 @@ engine-parity:
 
 jev-gate:
 	jev-gate ID=$(ID) GATE=$(GATE)
+
+run-check:
+	run-check
 
 test:
 	pytest -q
