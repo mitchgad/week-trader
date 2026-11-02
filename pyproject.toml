@@ -29,6 +29,7 @@ paper-forward = "week_trader.cli.paper_forward:main"
 verify-backtest = "week_trader.cli.verify_backtest:main"
 data-validate = "week_trader.cli.data_validate:main"
 engine-parity = "week_trader.cli.engine_parity:main"
+run-check = "week_trader.cli.run_check:main"
 
 [build-system]
 requires = ["setuptools>=68"]
