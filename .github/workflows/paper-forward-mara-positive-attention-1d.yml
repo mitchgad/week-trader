@@ -1,4 +1,5 @@
 name: paper-forward-mara-positive-attention-1d
+# workflow bump: 2026-11-06 post-54 re-run trigger
 
 on:
   schedule:
