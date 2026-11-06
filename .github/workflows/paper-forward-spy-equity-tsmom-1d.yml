@@ -6,10 +6,6 @@ on:
     # Weekdays after US cash close (21:30 UTC ≈ 4:30pm ET standard time)
     - cron: "30 21 * * 1-5"
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/paper-forward-spy-equity-tsmom-1d.yml"
 
 jobs:
   forward-spy-equity:
@@ -27,6 +23,7 @@ jobs:
         env:
           ALPACA_PAPER_KEY: ${{ secrets.ALPACA_PAPER_KEY }}
           ALPACA_PAPER_SECRET: ${{ secrets.ALPACA_PAPER_SECRET }}
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
         run: |
           set -euo pipefail
           ID=spy-equity-tsmom-1d

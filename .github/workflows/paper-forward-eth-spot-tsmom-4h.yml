@@ -5,10 +5,6 @@ on:
   schedule:
     - cron: "15 */4 * * *"
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/paper-forward-eth-spot-tsmom-4h.yml"
 
 jobs:
   forward:
@@ -26,6 +22,7 @@ jobs:
         env:
           ALPACA_PAPER_KEY: ${{ secrets.ALPACA_PAPER_KEY }}
           ALPACA_PAPER_SECRET: ${{ secrets.ALPACA_PAPER_SECRET }}
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
         run: |
           set -euo pipefail
           ID=eth-spot-tsmom-4h
