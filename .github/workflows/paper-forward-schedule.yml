@@ -8,10 +8,6 @@ on:
     # Hourly account monitor + anomaly check (no live 4h signal fetch)
     - cron: "5 * * * *"
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/paper-forward-schedule.yml"
 
 jobs:
   forward-paper:
@@ -32,6 +28,7 @@ jobs:
         env:
           ALPACA_PAPER_KEY: ${{ secrets.ALPACA_PAPER_KEY }}
           ALPACA_PAPER_SECRET: ${{ secrets.ALPACA_PAPER_SECRET }}
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
         run: |
           set -euo pipefail
           ID=btc-spot-tsmom-4h
@@ -80,6 +77,7 @@ jobs:
         env:
           ALPACA_PAPER_KEY: ${{ secrets.ALPACA_PAPER_KEY }}
           ALPACA_PAPER_SECRET: ${{ secrets.ALPACA_PAPER_SECRET }}
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
         run: |
           set -euo pipefail
           ID=btc-spot-tsmom-4h
