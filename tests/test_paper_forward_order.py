@@ -115,6 +115,8 @@ def test_gate_runs_before_paper_order(monkeypatch: pytest.MonkeyPatch, tmp_path:
     monkeypatch.setenv("ALPACA_PAPER_KEY", "k")
     monkeypatch.setenv("ALPACA_PAPER_SECRET", "s")
     monkeypatch.setenv("ALPACA_PAPER_BASE_URL", "https://paper-api.alpaca.markets")
+    # Submit path skips the real TypeSafe call when unset — set so gate/paper_order run.
+    monkeypatch.setenv("TYPESAFE_API_KEY", "test-typesafe-key")
 
     repo = Path(__file__).resolve().parents[1]
     hid = "_template"
@@ -180,8 +182,8 @@ def test_gate_runs_before_paper_order(monkeypatch: pytest.MonkeyPatch, tmp_path:
         dry_run=True,
         run_jev_gate_fn=fake_gate,
         paper_order_fn=fake_paper_order,
-        fetch_positions=lambda: [],
-        fetch_open_orders=lambda: [],
+        fetch_positions=list,
+        fetch_open_orders=list,
     )
     assert calls == ["gate:trade", "paper_order"]
     assert result.get("validated_dry_run") is True
@@ -206,6 +208,7 @@ def test_account_halt_blocks_before_broker(
 
     monkeypatch.setenv("GATE_LOG_HMAC_SECRET", "test-hmac-secret-for-ci-only")
     monkeypatch.setenv("ALPACA_PAPER_BASE_URL", "https://paper-api.alpaca.markets")
+    monkeypatch.setenv("TYPESAFE_API_KEY", "test-typesafe-key")
 
     repo = Path(__file__).resolve().parents[1]
     hid = "_template"
@@ -260,8 +263,8 @@ def test_account_halt_blocks_before_broker(
         {"side": "long"},
         dry_run=False,
         run_jev_gate_fn=fake_gate,
-        fetch_positions=lambda: [],
-        fetch_open_orders=lambda: [],
+        fetch_positions=list,
+        fetch_open_orders=list,
     )
     assert result["submitted"] is False
     assert result["reason"] == "paper_order_rejected"
@@ -287,6 +290,7 @@ def test_client_order_id_tag_prefix_on_dry_run(
 
     monkeypatch.setenv("GATE_LOG_HMAC_SECRET", "test-hmac-secret-for-ci-only")
     monkeypatch.setenv("ALPACA_PAPER_BASE_URL", "https://paper-api.alpaca.markets")
+    monkeypatch.setenv("TYPESAFE_API_KEY", "test-typesafe-key")
 
     repo = Path(__file__).resolve().parents[1]
     hid = "_template"
@@ -338,8 +342,8 @@ def test_client_order_id_tag_prefix_on_dry_run(
         {"side": "long"},
         dry_run=True,
         run_jev_gate_fn=fake_gate,
-        fetch_positions=lambda: [],
-        fetch_open_orders=lambda: [],
+        fetch_positions=list,
+        fetch_open_orders=list,
     )
     client_order_id = result["paper_order"]["client_order_id"]
     assert str(client_order_id).startswith("wt-_template--")
