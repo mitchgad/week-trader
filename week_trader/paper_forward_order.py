@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import os
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from week_trader.brokers.alpaca_paper import AlpacaPaperError, paper_base_url
 from week_trader.jev_gate import JevGateError, run_jev_gate
@@ -71,6 +73,15 @@ def submit_paper_order_for_signal(
 
     intent_id, _intent = resolved
     assert_alpaca_paper_host_pinned()
+
+    # CI and scheduled forwards must not crash when TypeSafe isn't configured; Jev trade
+    # gate still requires TYPESAFE_API_KEY at runtime (same fail-closed as jev-gate).
+    if not os.environ.get("TYPESAFE_API_KEY", "").strip():
+        return {
+            "submitted": False,
+            "reason": "typesafe_api_key_missing_trade_gate_skipped",
+            "order_intent_id": intent_id,
+        }
 
     gate_runner = run_jev_gate_fn or run_jev_gate
     order_runner = paper_order_fn or paper_order

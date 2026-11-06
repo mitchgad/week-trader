@@ -62,6 +62,33 @@ def test_fail_closed_on_live_alpaca_host(monkeypatch: pytest.MonkeyPatch) -> Non
         assert_alpaca_paper_host_pinned()
 
 
+def test_typesafe_api_key_missing_skips_trade_gate(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Scheduled Actions often have Alpaca secrets but not TypeSafe; signal must not crash."""
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    monkeypatch.setenv("ALPACA_PAPER_BASE_URL", "https://paper-api.alpaca.markets")
+
+    gate_called = False
+
+    def fake_gate(_hid: str, _gate: str) -> Path:
+        nonlocal gate_called
+        gate_called = True
+        raise AssertionError("gate must not run without TYPESAFE_API_KEY")
+
+    monkeypatch.setattr(
+        "week_trader.paper_forward_order.resolve_order_intent_for_signal",
+        lambda _hid, _sig: ("intent", {"symbol": "BTCUSD", "side": "buy", "qty": "0.001"}),
+    )
+
+    result = submit_paper_order_for_signal(
+        "btc-spot-tsmom-4h",
+        {"side": "long"},
+        run_jev_gate_fn=fake_gate,
+    )
+    assert result["submitted"] is False
+    assert result["reason"] == "typesafe_api_key_missing_trade_gate_skipped"
+    assert gate_called is False
+
+
 def test_paper_url_pin_allows_paper_host(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ALPACA_PAPER_BASE_URL", "https://paper-api.alpaca.markets")
     assert assert_alpaca_paper_host_pinned() == "https://paper-api.alpaca.markets"
@@ -88,6 +115,8 @@ def test_gate_runs_before_paper_order(monkeypatch: pytest.MonkeyPatch, tmp_path:
     monkeypatch.setenv("ALPACA_PAPER_KEY", "k")
     monkeypatch.setenv("ALPACA_PAPER_SECRET", "s")
     monkeypatch.setenv("ALPACA_PAPER_BASE_URL", "https://paper-api.alpaca.markets")
+    # Submit path skips the real TypeSafe call when unset — set so gate/paper_order run.
+    monkeypatch.setenv("TYPESAFE_API_KEY", "test-typesafe-key")
 
     repo = Path(__file__).resolve().parents[1]
     hid = "_template"
@@ -153,8 +182,8 @@ def test_gate_runs_before_paper_order(monkeypatch: pytest.MonkeyPatch, tmp_path:
         dry_run=True,
         run_jev_gate_fn=fake_gate,
         paper_order_fn=fake_paper_order,
-        fetch_positions=lambda: [],
-        fetch_open_orders=lambda: [],
+        fetch_positions=list,
+        fetch_open_orders=list,
     )
     assert calls == ["gate:trade", "paper_order"]
     assert result.get("validated_dry_run") is True
@@ -179,6 +208,7 @@ def test_account_halt_blocks_before_broker(
 
     monkeypatch.setenv("GATE_LOG_HMAC_SECRET", "test-hmac-secret-for-ci-only")
     monkeypatch.setenv("ALPACA_PAPER_BASE_URL", "https://paper-api.alpaca.markets")
+    monkeypatch.setenv("TYPESAFE_API_KEY", "test-typesafe-key")
 
     repo = Path(__file__).resolve().parents[1]
     hid = "_template"
@@ -233,8 +263,8 @@ def test_account_halt_blocks_before_broker(
         {"side": "long"},
         dry_run=False,
         run_jev_gate_fn=fake_gate,
-        fetch_positions=lambda: [],
-        fetch_open_orders=lambda: [],
+        fetch_positions=list,
+        fetch_open_orders=list,
     )
     assert result["submitted"] is False
     assert result["reason"] == "paper_order_rejected"
@@ -260,6 +290,7 @@ def test_client_order_id_tag_prefix_on_dry_run(
 
     monkeypatch.setenv("GATE_LOG_HMAC_SECRET", "test-hmac-secret-for-ci-only")
     monkeypatch.setenv("ALPACA_PAPER_BASE_URL", "https://paper-api.alpaca.markets")
+    monkeypatch.setenv("TYPESAFE_API_KEY", "test-typesafe-key")
 
     repo = Path(__file__).resolve().parents[1]
     hid = "_template"
@@ -311,8 +342,8 @@ def test_client_order_id_tag_prefix_on_dry_run(
         {"side": "long"},
         dry_run=True,
         run_jev_gate_fn=fake_gate,
-        fetch_positions=lambda: [],
-        fetch_open_orders=lambda: [],
+        fetch_positions=list,
+        fetch_open_orders=list,
     )
     client_order_id = result["paper_order"]["client_order_id"]
     assert str(client_order_id).startswith("wt-_template--")
