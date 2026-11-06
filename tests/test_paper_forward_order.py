@@ -62,6 +62,33 @@ def test_fail_closed_on_live_alpaca_host(monkeypatch: pytest.MonkeyPatch) -> Non
         assert_alpaca_paper_host_pinned()
 
 
+def test_typesafe_api_key_missing_skips_trade_gate(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Scheduled Actions often have Alpaca secrets but not TypeSafe; signal must not crash."""
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    monkeypatch.setenv("ALPACA_PAPER_BASE_URL", "https://paper-api.alpaca.markets")
+
+    gate_called = False
+
+    def fake_gate(_hid: str, _gate: str) -> Path:
+        nonlocal gate_called
+        gate_called = True
+        raise AssertionError("gate must not run without TYPESAFE_API_KEY")
+
+    monkeypatch.setattr(
+        "week_trader.paper_forward_order.resolve_order_intent_for_signal",
+        lambda _hid, _sig: ("intent", {"symbol": "BTCUSD", "side": "buy", "qty": "0.001"}),
+    )
+
+    result = submit_paper_order_for_signal(
+        "btc-spot-tsmom-4h",
+        {"side": "long"},
+        run_jev_gate_fn=fake_gate,
+    )
+    assert result["submitted"] is False
+    assert result["reason"] == "typesafe_api_key_missing_trade_gate_skipped"
+    assert gate_called is False
+
+
 def test_paper_url_pin_allows_paper_host(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ALPACA_PAPER_BASE_URL", "https://paper-api.alpaca.markets")
     assert assert_alpaca_paper_host_pinned() == "https://paper-api.alpaca.markets"
