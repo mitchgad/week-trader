@@ -4,6 +4,10 @@ on:
   schedule:
     - cron: "30 21 * * 1-5"
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/paper-forward-vgit-shy-term-carry-1d.yml"
 
 jobs:
   forward:

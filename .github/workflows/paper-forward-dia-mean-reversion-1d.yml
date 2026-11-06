@@ -5,6 +5,10 @@ on:
     # Weekdays ~30m after US cash close (21:30 UTC standard time; adjust for DST manually if needed)
     - cron: "30 21 * * 1-5"
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/paper-forward-dia-mean-reversion-1d.yml"
 
 jobs:
   forward-paper-dia:
