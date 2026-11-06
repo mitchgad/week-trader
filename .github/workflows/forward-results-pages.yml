@@ -1,0 +1,61 @@
+name: forward-results-pages
+
+on:
+  workflow_run:
+    workflows:
+      - paper-forward-schedule
+      - paper-forward-health
+      - paper-forward-crypto-alts-csmom-4h
+      - paper-forward-dia-mean-reversion-1d
+      - paper-forward-eem-xlf-csmom-1d
+      - paper-forward-eth-spot-tsmom-4h
+      - paper-forward-gld-negative-attention-1d
+      - paper-forward-mara-positive-attention-1d
+      - paper-forward-qqq-volume-confirm-1d
+      - paper-forward-slv-negative-attention-1d
+      - paper-forward-spy-equity-tsmom-1d
+      - paper-forward-tlt-ief-pairs-1d
+      - paper-forward-vb-vv-size-spread-1d
+      - paper-forward-vgit-shy-term-carry-1d
+      - paper-forward-xbi-max-short-1d
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/forward-results-pages.yml"
+      - "scripts/publish_forward_results_page.py"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: forward-results-pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package (for forward_track_record)
+        run: pip install -e ".[dev]"
+      - name: Build static forward results page
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python scripts/publish_forward_results_page.py --out-dir docs/forward-results
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/forward-results
+      - id: deploy
+        uses: actions/deploy-pages@v4

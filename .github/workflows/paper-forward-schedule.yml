@@ -7,10 +7,16 @@ on:
     # Hourly account monitor + anomaly check (no live 4h signal fetch)
     - cron: "5 * * * *"
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/paper-forward-schedule.yml"
 
 jobs:
   forward-paper:
-    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '20 */4 * * *'
+    # For scheduled events only the matching cron sets github.event.schedule; manual and
+    # push runs execute the 4h path (monitor + live signal + alerts).
+    if: github.event_name != 'schedule' || github.event.schedule == '20 */4 * * *'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -49,7 +55,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: paper-forward-btc-spot-tsmom-4h
+          name: paper-forward-btc-spot-tsmom-4h-4h-cycle
           path: |
             paper/btc-spot-tsmom-4h/forward/status.json
             paper/btc-spot-tsmom-4h/forward/alerts.json
@@ -57,7 +63,8 @@ jobs:
           if-no-files-found: ignore
 
   forward-monitor-hourly:
-    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '5 * * * *'
+    # Hourly schedule only — avoids racing workflow_dispatch/push against forward-paper.
+    if: github.event_name == 'schedule' && github.event.schedule == '5 * * * *'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -91,3 +98,13 @@ jobs:
               raise SystemExit(f"critical forward anomalies: {report.get('alerts')}")
           print("hourly forward anomaly severity:", report.get("severity"))
           PY
+      - name: Upload forward artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-forward-btc-spot-tsmom-4h-hourly
+          path: |
+            paper/btc-spot-tsmom-4h/forward/status.json
+            paper/btc-spot-tsmom-4h/forward/alerts.json
+            paper/btc-spot-tsmom-4h/forward/events.jsonl
+          if-no-files-found: ignore

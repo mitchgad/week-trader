@@ -5,6 +5,10 @@ on:
     # Hourly health summary (after :10 UTC to follow forward cron ticks)
     - cron: "10 * * * *"
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/paper-forward-health.yml"
 
 permissions:
   actions: read

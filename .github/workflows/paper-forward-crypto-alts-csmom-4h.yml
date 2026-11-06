@@ -4,6 +4,10 @@ on:
   schedule:
     - cron: "15 */4 * * *"
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/paper-forward-crypto-alts-csmom-4h.yml"
 
 jobs:
   forward:
